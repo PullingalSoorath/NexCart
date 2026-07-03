@@ -10,12 +10,13 @@
   --accent-light: #d1fae5;
   --danger: #ef4444;        /* Crimson Red */
   --warning: #f59e0b;       /* Amber */
+  --banner-text-color: #ffffff;
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
-  --text-primary: #0f172a;
+  --text-primary: #1e1e1e;
   --text-secondary: #475569;
-  --text-light: #94a3b8;
+  --text-light: #28475b;
   --border-color: #e2e8f0;
   
   /* Glassmorphism */
@@ -634,11 +635,13 @@ button {
   padding: 24px 30px;
   background-size: cover;
   background-position: center;
-  color: white;
+  color: var(--banner-text-color);
+  pointer-events: none;
 }
 
 .hero-slide.active {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .hero-tag {
@@ -653,6 +656,7 @@ button {
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: var(--banner-text-color);
 }
 
 .hero-title {
@@ -662,6 +666,7 @@ button {
   margin-bottom: 6px;
   max-width: 70%;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  color: var(--banner-text-color);
 }
 
 .hero-desc {
@@ -671,6 +676,7 @@ button {
   margin-bottom: 12px;
   max-width: 70%;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  color: var(--banner-text-color);
 }
 
 .carousel-indicators {

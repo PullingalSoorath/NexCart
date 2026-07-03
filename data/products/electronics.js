@@ -41,7 +41,7 @@ const ELECTRONICS_PRODUCTS = [
     rating: 4.7,
     reviews: 412,
     trending: true,
-    image: "https://images.unsplash.com/photo-1496181130204-7552cc14ac1b?w=500&auto=format&fit=crop&q=80",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNQi65Gr7Yyvp7klJeLVrumGd9p7MB6AV7c8LlDn2i0w&s=10",
     description: "Unleash your creativity with the ZenBook OLED. An ultra-thin, all-metal workstation hosting a brilliant 2.8K display, high performance GPU, and silent cooling fans.",
     interestGroup: "Gadgets",
     warranty: "1 Year Brand Warranty",

@@ -278,9 +278,10 @@ function initUserDatabase() {
       password: "password123",
       phone: "+91 9876543210",
       language: "English",
-      district: "New Delhi",
-      city: "Delhi",
-      address: "H.No 123, Block C, Connaught Place",
+      state: "Kerala",
+      city: "Trivandrum",
+      pincode: "695001",
+      address: "My House, Neyyattinkara, Trivandrum Kerala",
       interests: ["Fashion", "Gadgets"],
       completedDetails: true,
       completedInterests: true,
@@ -289,9 +290,10 @@ function initUserDatabase() {
           id: "addr-1",
           tag: "Home",
           name: "Anonymous User",
-          street: "H.No 123, Block C, Connaught Place",
-          city: "Delhi",
-          district: "New Delhi",
+          street: "My House, Neyyattinkara, Trivandrum Kerala",
+          city: "Trivandrum",
+          state: "Kerala",
+          pincode: "695001",
           phone: "+91 9876543210"
         }
       ]
@@ -417,8 +419,9 @@ function initAuth() {
       address: address,
       phone: "",
       language: "English",
-      district: "",
+      state: "",
       city: "",
+      pincode: "",
       interests: [],
       completedDetails: false,
       completedInterests: false
@@ -452,8 +455,9 @@ function initOnboarding() {
     const name = document.getElementById("onboard-name").value;
     const phone = document.getElementById("onboard-phone").value;
     const language = document.getElementById("onboard-lang").value;
-    const district = document.getElementById("onboard-district").value;
+    const state = document.getElementById("onboard-state").value;
     const city = document.getElementById("onboard-city").value;
+    const pincode = document.getElementById("onboard-pincode").value;
     const address = document.getElementById("onboard-address").value;
     
     const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
@@ -461,13 +465,27 @@ function initOnboarding() {
       users[email].name = name;
       users[email].phone = phone;
       users[email].language = language;
-      users[email].district = district;
+      users[email].state = state;
       users[email].city = city;
+      users[email].pincode = pincode;
       users[email].address = address;
       users[email].completedDetails = true;
+      users[email].addresses = [
+        {
+          id: "addr-" + Date.now(),
+          tag: "Home",
+          name: name,
+          street: address,
+          state: state,
+          city: city,
+          pincode: pincode,
+          phone: phone
+        }
+      ];
       
       localStorage.setItem("nexcart_users", JSON.stringify(users));
       Store.currentUser = users[email];
+      Store.savedAddresses = users[email].addresses;
     }
     
     showAlert("Profile Completed", "Your details have been saved successfully.", "success", () => {
@@ -538,11 +556,11 @@ function renderHomeScreen() {
   
   // Render slide items
   let slidesHTML = BANNER_SLIDES.map((slide, index) => `
-    <div class="hero-slide ${index === 0 ? 'active' : ''}" style="background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.75)), url('${slide.image}');">
+    <div class="hero-slide ${index === 0 ? 'active' : ''}" style="background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.75)), url('${slide.image}'); cursor: pointer;" data-category="${slide.category || ''}">
       <span class="hero-tag">${slide.tag}</span>
       <h3 class="hero-title">${slide.title}</h3>
       <p class="hero-desc">${slide.desc}</p>
-      <button class="btn btn-accent btn-sm" style="width: auto; align-self: flex-start;" id="btn-carousel-shop-${index}">Shop Now</button>
+      <button class="btn btn-accent btn-sm" style="width: auto; align-self: flex-start;">Shop Now</button>
     </div>
   `).join('');
   
@@ -574,21 +592,23 @@ function renderHomeScreen() {
   
   // Indicator Click
   dots.forEach(dot => {
-    dot.addEventListener("click", () => {
+    dot.addEventListener("click", (e) => {
+      e.stopPropagation();
       clearInterval(slideInterval);
       const target = parseInt(dot.getAttribute("data-slide"));
       setSlide(target);
     });
   });
   
-  // Carousel button actions
-  document.getElementById("btn-carousel-shop-0").addEventListener("click", () => {
-    showCategoryProducts("Fashion");
-    routeTo("screen-categories");
-  });
-  document.getElementById("btn-carousel-shop-1").addEventListener("click", () => {
-    showCategoryProducts("Gadgets");
-    routeTo("screen-categories");
+  // Carousel click action (entire slide redirects to category)
+  slides.forEach((slide) => {
+    slide.addEventListener("click", () => {
+      const cat = slide.getAttribute("data-category");
+      if (cat) {
+        showCategoryProducts(cat);
+        routeTo("screen-categories");
+      }
+    });
   });
 
   // 2. Trending Products
@@ -1295,8 +1315,9 @@ function initiateCheckout() {
         tag: "Home",
         name: Store.currentUser.name,
         street: Store.currentUser.address,
-        city: Store.currentUser.city || "Delhi",
-        district: Store.currentUser.district || "New Delhi",
+        city: Store.currentUser.city || "Trivandrum",
+        state: Store.currentUser.state || "Kerala",
+        pincode: Store.currentUser.pincode || "695001",
         phone: Store.currentUser.phone
       };
       Store.currentUser.addresses = [checkoutActiveAddress];
@@ -1309,7 +1330,7 @@ function initiateCheckout() {
   addressBox.innerHTML = `
     <div class="address-name">${checkoutActiveAddress.name}</div>
     <div>${checkoutActiveAddress.street}</div>
-    <div>District: ${checkoutActiveAddress.district}, City: ${checkoutActiveAddress.city}</div>
+    <div>State: ${checkoutActiveAddress.state}, City: ${checkoutActiveAddress.city}, Pincode: ${checkoutActiveAddress.pincode}</div>
     <div style="margin-top: 6px; font-weight: 600; color: var(--text-primary);">Mobile: ${checkoutActiveAddress.phone}</div>
   `;
   
@@ -1438,7 +1459,7 @@ function initCheckoutScreen() {
       addressBox.innerHTML = `
         <div class="address-name">${selectedAddr.name}</div>
         <div>${selectedAddr.street}</div>
-        <div>District: ${selectedAddr.district}, City: ${selectedAddr.city}</div>
+        <div>State: ${selectedAddr.state}, City: ${selectedAddr.city}, Pincode: ${selectedAddr.pincode}</div>
         <div style="margin-top: 6px; font-weight: 600; color: var(--text-primary);">Mobile: ${selectedAddr.phone}</div>
       `;
       
@@ -1667,8 +1688,9 @@ function initAccountScreen() {
     document.getElementById("edit-profile-email").value = Store.currentUser.email || "";
     document.getElementById("edit-profile-phone").value = Store.currentUser.phone || "";
     document.getElementById("edit-profile-language").value = Store.currentUser.language || "English";
-    document.getElementById("edit-profile-district").value = Store.currentUser.district || "";
+    document.getElementById("edit-profile-state").value = Store.currentUser.state || "";
     document.getElementById("edit-profile-city").value = Store.currentUser.city || "";
+    document.getElementById("edit-profile-pincode").value = Store.currentUser.pincode || "";
     document.getElementById("edit-profile-address").value = Store.currentUser.address || "";
     routeTo("screen-edit-profile");
   });
@@ -1689,9 +1711,10 @@ function initAccountScreen() {
       email: "user@nexcart.com",
       phone: "+91 9876543210",
       language: "English",
-      district: "New Delhi",
-      city: "Delhi",
-      address: "H.No 123, Block C, Connaught Place",
+      state: "Kerala",
+      city: "Trivandrum",
+      pincode: "695001",
+      address: "My House, Neyyattinkara, Trivandrum Kerala",
       interests: ["Fashion", "Gadgets"]
     };
     Store.cart = [];
@@ -2171,8 +2194,9 @@ function openAddressManagementSheet(onSelectAddressCallback = null) {
         tag: "Home",
         name: Store.currentUser.name,
         street: Store.currentUser.address,
-        city: Store.currentUser.city || "Delhi",
-        district: Store.currentUser.district || "New Delhi",
+        city: Store.currentUser.city || "Trivandrum",
+        state: Store.currentUser.state || "Kerala",
+        pincode: Store.currentUser.pincode || "695001",
         phone: Store.currentUser.phone
       }
     ];
@@ -2191,7 +2215,7 @@ function openAddressManagementSheet(onSelectAddressCallback = null) {
               </div>
               <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">${addr.name}</div>
               <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">${addr.street}</div>
-              <div style="font-size: 12px; color: var(--text-light);">District: ${addr.district}, City: ${addr.city}</div>
+              <div style="font-size: 12px; color: var(--text-light);">State: ${addr.state}, City: ${addr.city}, Pincode: ${addr.pincode}</div>
               <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">Mobile: ${addr.phone}</div>
               <div class="address-card-actions">
                 <button class="address-btn edit" data-edit-id="${addr.id}">
@@ -2296,13 +2320,18 @@ function openAddressManagementSheet(onSelectAddressCallback = null) {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="form-group">
-            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">District</label>
-            <input type="text" id="sheet-addr-district" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.district : ''}">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">State</label>
+            <input type="text" id="sheet-addr-state" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.state : ''}">
           </div>
           <div class="form-group">
             <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">City</label>
             <input type="text" id="sheet-addr-city" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.city : ''}">
           </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Pincode</label>
+          <input type="text" id="sheet-addr-pincode" class="form-input" style="height: 38px;" required value="${isEditing ? (existingAddress.pincode || '') : ''}" pattern="[0-9]{6}" title="Six digit pincode">
         </div>
 
         <div class="form-group">
@@ -2327,16 +2356,18 @@ function openAddressManagementSheet(onSelectAddressCallback = null) {
       const tag = document.getElementById("sheet-addr-tag").value.trim();
       const name = document.getElementById("sheet-addr-name").value.trim();
       const street = document.getElementById("sheet-addr-street").value.trim();
-      const district = document.getElementById("sheet-addr-district").value.trim();
+      const state = document.getElementById("sheet-addr-state").value.trim();
       const city = document.getElementById("sheet-addr-city").value.trim();
+      const pincode = document.getElementById("sheet-addr-pincode").value.trim();
       const phone = document.getElementById("sheet-addr-phone").value.trim();
 
       if (isEditing) {
         existingAddress.tag = tag;
         existingAddress.name = name;
         existingAddress.street = street;
-        existingAddress.district = district;
+        existingAddress.state = state;
         existingAddress.city = city;
+        existingAddress.pincode = pincode;
         existingAddress.phone = phone;
         
         if (checkoutActiveAddress && checkoutActiveAddress.id === existingAddress.id) {
@@ -2348,8 +2379,9 @@ function openAddressManagementSheet(onSelectAddressCallback = null) {
           tag,
           name,
           street,
-          district,
+          state,
           city,
+          pincode,
           phone
         };
         Store.currentUser.addresses.push(newAddr);
@@ -2472,16 +2504,18 @@ function initEditProfileScreen() {
       const name = document.getElementById("edit-profile-name").value.trim();
       const phone = document.getElementById("edit-profile-phone").value.trim();
       const language = document.getElementById("edit-profile-language").value;
-      const district = document.getElementById("edit-profile-district").value.trim();
+      const state = document.getElementById("edit-profile-state").value.trim();
       const city = document.getElementById("edit-profile-city").value.trim();
+      const pincode = document.getElementById("edit-profile-pincode").value.trim();
       const address = document.getElementById("edit-profile-address").value.trim();
 
       // Save user details
       Store.currentUser.name = name;
       Store.currentUser.phone = phone;
       Store.currentUser.language = language;
-      Store.currentUser.district = district;
+      Store.currentUser.state = state;
       Store.currentUser.city = city;
+      Store.currentUser.pincode = pincode;
       Store.currentUser.address = address;
 
       // Update address list defaults
@@ -2489,8 +2523,9 @@ function initEditProfileScreen() {
         Store.currentUser.addresses[0].name = name;
         Store.currentUser.addresses[0].street = address;
         Store.currentUser.addresses[0].phone = phone;
-        Store.currentUser.addresses[0].district = district;
+        Store.currentUser.addresses[0].state = state;
         Store.currentUser.addresses[0].city = city;
+        Store.currentUser.addresses[0].pincode = pincode;
       }
 
       saveUserToDatabase();
@@ -2608,8 +2643,9 @@ window.addEventListener("DOMContentLoaded", () => {
             tag: "Home",
             name: Store.currentUser.name || "User",
             street: Store.currentUser.address || "",
-            city: Store.currentUser.city || "Delhi",
-            district: Store.currentUser.district || "New Delhi",
+            city: Store.currentUser.city || "Trivandrum",
+            state: Store.currentUser.state || "Kerala",
+            pincode: Store.currentUser.pincode || "695001",
             phone: Store.currentUser.phone || ""
           }
         ];

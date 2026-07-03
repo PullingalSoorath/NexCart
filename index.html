@@ -154,13 +154,18 @@
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
-                  <label class="form-label">District</label>
-                  <input type="text" id="onboard-district" class="form-input" placeholder="New Delhi" required>
+                  <label class="form-label">State</label>
+                  <input type="text" id="onboard-state" class="form-input" placeholder="Kerala" required>
                 </div>
                 <div class="form-group">
                   <label class="form-label">City</label>
-                  <input type="text" id="onboard-city" class="form-input" placeholder="Delhi" required>
+                  <input type="text" id="onboard-city" class="form-input" placeholder="Trivandrum" required>
                 </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Pincode</label>
+                <input type="text" id="onboard-pincode" class="form-input" placeholder="695001" required pattern="[0-9]{6}" title="Six digit pincode">
               </div>
 
               <div class="form-group">
@@ -856,15 +861,21 @@
 
             <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
               <div class="form-group">
-                <label class="form-label" id="lbl-ep-district"
-                  style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">District</label>
-                <input type="text" id="edit-profile-district" class="form-input" required placeholder="District">
+                <label class="form-label" id="lbl-ep-state"
+                  style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">State</label>
+                <input type="text" id="edit-profile-state" class="form-input" required placeholder="State">
               </div>
               <div class="form-group">
                 <label class="form-label" id="lbl-ep-city"
                   style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">City</label>
                 <input type="text" id="edit-profile-city" class="form-input" required placeholder="City">
               </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="lbl-ep-pincode"
+                style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Pincode</label>
+              <input type="text" id="edit-profile-pincode" class="form-input" required placeholder="Pincode" pattern="[0-9]{6}" title="Six digit pincode">
             </div>
 
             <div class="form-group">

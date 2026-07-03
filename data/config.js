@@ -10,14 +10,16 @@ const BANNER_SLIDES = [
     tag: "Exclusive Launch",
     title: "Vapor Summer Wear",
     desc: "Up to 40% off premium shirts and silk apparel",
-    color: "#8a85f2"
+    color: "#8a85f2",
+    category: "Fashion"
   },
   {
     image: "hero_banner_tech.png",
     tag: "Next-Gen Audio",
     title: "SonicX Audio Tech",
     desc: "Experience high-fidelity wireless music starting ₹2,499",
-    color: "#83a5f5"
+    color: "#83a5f5",
+    category: "Gadgets"
   }
 ];
 

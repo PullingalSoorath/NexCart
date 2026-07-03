@@ -14,9 +14,10 @@ const Store = {
     email: "user@nexcart.com",
     phone: "+91 9876543210",
     language: "English",
-    district: "New Delhi",
-    city: "Delhi",
-    address: "H.No 123, Block C, Connaught Place",
+    state: "Kerala",
+    city: "Trivandrum",
+    pincode: "695001",
+    address: "My House, Neyyattinkara, Trivandrum Kerala",
     interests: ["Fashion", "Gadgets"]
   },
   cart: [],          // items: { product, quantity, size, color }
@@ -71,11 +72,11 @@ const Store = {
       id: "addr-default",
       tag: "Home",
       name: "Default User",
-      street: "H.No 123, Block C, Connaught Place",
-      district: "New Delhi",
-      city: "Delhi",
-      pincode: "110001",
-      phone: "+91 9876543210"
+      street: "My House, Neyyattinkara, Trivandrum Kerala",
+      state: "Kerala",
+      city: "Trivandrum",
+      pincode: "695001",
+      phone: "+91 9090909090"
     }
   ],
   activeTab: "home",
@@ -119,8 +120,9 @@ function saveUserToDatabase() {
       name:      Store.currentUser.name,
       phone:     Store.currentUser.phone,
       language:  Store.currentUser.language,
-      district:  Store.currentUser.district,
+      state:     Store.currentUser.state,
       city:      Store.currentUser.city,
+      pincode:   Store.currentUser.pincode,
       address:   Store.currentUser.address,
       interests: Store.currentUser.interests,
       savedAddresses: Store.savedAddresses,
@@ -147,8 +149,9 @@ function loadActiveUserSession() {
     email:     activeEmail,
     phone:     saved.phone     || "",
     language:  saved.language  || "English",
-    district:  saved.district  || "",
+    state:     saved.state     || "",
     city:      saved.city      || "",
+    pincode:   saved.pincode   || "",
     address:   saved.address   || "",
     interests: saved.interests || []
   };
@@ -182,8 +185,9 @@ function registerUser(email, password, name) {
     name:           name || "NexCart User",
     phone:          "",
     language:       "English",
-    district:       "",
+    state:          "",
     city:           "",
+    pincode:        "",
     address:        "",
     interests:      [],
     savedAddresses: [],
