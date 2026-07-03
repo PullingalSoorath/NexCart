@@ -1,0 +1,2643 @@
+// NexCart E-commerce SPA — Core Application Logic
+//
+// Data is loaded from separate files before this script:
+//   data/products/fashion.js   → FASHION_PRODUCTS
+//   data/products/electronics.js → ELECTRONICS_PRODUCTS
+//   data/products/appliances.js → APPLIANCES_PRODUCTS
+//   data/products/toys.js      → TOYS_PRODUCTS
+//   data/products/others.js    → OTHERS_PRODUCTS
+//   data/products/index.js     → PRODUCT_CATALOG (merged + enriched)
+//   data/config.js             → BANNER_SLIDES, INTEREST_CATEGORIES, CATEGORY_TABS
+//   data/users.js              → Store, saveUserToDatabase, loadActiveUserSession, etc.
+
+
+// --- PAGE ROUTER SYSTEM ---
+// --- 3. PAGE ROUTER SYSTEM ---
+function routeTo(screenId) {
+  console.log(`Routing to: ${screenId}`);
+  
+  // Clear PDP slider timer when leaving PDP
+  if (screenId !== "screen-pdp" && typeof pdpCarouselInterval !== "undefined" && pdpCarouselInterval) {
+    clearInterval(pdpCarouselInterval);
+    pdpCarouselInterval = null;
+  }
+  
+  // Transition screens
+  const currentActive = document.querySelector(".screen-view.active");
+  const targetScreen = document.getElementById(screenId);
+  
+  if (currentActive && currentActive.id !== screenId) {
+    currentActive.classList.remove("active");
+    // Short delay to allow layout reflow for animation
+    setTimeout(() => {
+      currentActive.style.display = "none";
+      targetScreen.style.display = "flex";
+      
+      // Trigger reflow
+      targetScreen.offsetHeight;
+      
+      targetScreen.classList.add("active");
+    }, 150);
+  } else {
+    targetScreen.style.display = "flex";
+    targetScreen.classList.add("active");
+  }
+  
+  Store.activeScreen = screenId;
+  
+  // Determine Header & Bottom Nav visibility
+  const header = document.getElementById("app-header");
+  const bottomNav = document.getElementById("app-bottom-nav");
+  const fab = document.getElementById("fab-support-btn");
+  
+  const isShoppingTab = ["screen-home", "screen-categories", "screen-account", "screen-cart"].includes(screenId);
+  
+  if (isShoppingTab) {
+    header.style.display = "flex";
+    bottomNav.style.display = "flex";
+    fab.style.display = "flex";
+  } else {
+    header.style.display = "none";
+    bottomNav.style.display = "none";
+    fab.style.display = "none";
+  }
+  
+  // Map screenId to corresponding Nav Tab active class
+  if (isShoppingTab) {
+    const tabName = screenId.replace("screen-", "");
+    document.querySelectorAll(".nav-tab").forEach(tab => {
+      if (tab.getAttribute("data-tab") === tabName) {
+        tab.classList.add("active");
+      } else {
+        tab.classList.remove("active");
+      }
+    });
+    Store.activeTab = tabName;
+  }
+  
+  // Reset Scroll
+  const scrollContainer = document.getElementById("main-content-scroll");
+  if (scrollContainer) scrollContainer.scrollTop = 0;
+  targetScreen.scrollTop = 0;
+  
+  // Refresh Lucide Icons
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+
+// --- 4. RENDER COMPONENT UTILITIES ---
+
+// Custom Reusable Alert Modal
+function showAlert(title, content, type = "info", onClose = null) {
+  const overlay = document.getElementById("custom-alert-overlay");
+  const iconWrap = document.getElementById("custom-alert-icon-wrap");
+  const icon = document.getElementById("custom-alert-icon");
+  const titleEl = document.getElementById("custom-alert-title");
+  const contentEl = document.getElementById("custom-alert-content");
+  const closeBtn = document.getElementById("btn-custom-alert-close");
+  
+  if (!overlay || !titleEl || !contentEl || !closeBtn) return;
+  
+  // Set contents
+  titleEl.textContent = title;
+  contentEl.textContent = content;
+  
+  // Reset classes/icons
+  icon.removeAttribute("data-lucide");
+  
+  // Customize styling based on type
+  if (type === "error" || type === "danger") {
+    iconWrap.style.backgroundColor = "#ffe4e6";
+    iconWrap.style.color = "var(--danger)";
+    icon.setAttribute("data-lucide", "alert-circle");
+  } else if (type === "success") {
+    iconWrap.style.backgroundColor = "var(--accent-light)";
+    iconWrap.style.color = "var(--accent)";
+    icon.setAttribute("data-lucide", "check-circle-2");
+  } else if (type === "warning") {
+    iconWrap.style.backgroundColor = "#fef3c7";
+    iconWrap.style.color = "var(--warning)";
+    icon.setAttribute("data-lucide", "alert-triangle");
+  } else {
+    iconWrap.style.backgroundColor = "var(--primary-light)";
+    iconWrap.style.color = "var(--primary)";
+    icon.setAttribute("data-lucide", "info");
+  }
+  
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+  
+  // Re-bind close event to avoid duplication
+  const newCloseBtn = closeBtn.cloneNode(true);
+  closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+  
+  newCloseBtn.addEventListener("click", () => {
+    overlay.classList.remove("active");
+    setTimeout(() => {
+      overlay.style.display = "none";
+      if (typeof onClose === "function") {
+        onClose();
+      }
+    }, 200);
+  });
+  
+  // Show overlay
+  overlay.style.display = "flex";
+  overlay.offsetHeight; // trigger reflow
+  overlay.classList.add("active");
+}
+
+// Redirect all showToast to showAlert for global UX compatibility
+function showToast(message, type = "success") {
+  let title = "Notification";
+  if (type === "success") title = "Success";
+  else if (type === "error" || type === "danger") title = "Error";
+  else if (type === "warning") title = "Warning";
+  
+  showAlert(title, message, type);
+}
+
+// Render Star rating icons
+function getStarsHTML(rating) {
+  let stars = "";
+  for (let i = 1; i <= 5; i++) {
+    if (i <= Math.floor(rating)) {
+      stars += `<i data-lucide="star" style="width: 11px; height: 11px; fill: var(--warning); color: var(--warning);"></i>`;
+    } else {
+      stars += `<i data-lucide="star" style="width: 11px; height: 11px; color: var(--text-light);"></i>`;
+    }
+  }
+  return `<div style="display: flex; gap: 1px;">${stars}</div>`;
+}
+
+// Render dynamic product card
+function createProductCardHTML(product) {
+  const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
+  const isWishlisted = Store.wishlist.has(product.id);
+  const badgeHTML = product.trending ? `<div class="product-card-badge">TRENDING</div>` : '';
+  
+  return `
+    <div class="product-card" data-product-id="${product.id}">
+      ${badgeHTML}
+      <button class="wishlist-toggle-btn ${isWishlisted ? 'active' : ''}" data-product-id="${product.id}">
+        <i data-lucide="heart" style="width: 16px; height: 16px; ${isWishlisted ? 'fill: currentColor;' : ''}"></i>
+      </button>
+      <div class="product-img-wrap">
+        <img src="${product.image}" alt="${product.name}" class="product-img" loading="lazy">
+      </div>
+      <div class="product-info-wrap">
+        <span class="product-cat">${product.category}</span>
+        <h4 class="product-name">${product.name}</h4>
+        <div class="rating-row" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+          ${getStarsHTML(product.rating)}
+          <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">5/${product.rating}</span>
+          <span style="font-size: 10px; color: var(--text-light); font-weight: 500;">(${product.reviews})</span>
+        </div>
+        <div class="price-row">
+          <div class="prices">
+            <span class="price-current">₹${product.price.toLocaleString("en-IN")}</span>
+            <span class="price-mrp">₹${product.mrp.toLocaleString("en-IN")}</span>
+          </div>
+          <button class="quick-add-btn" data-product-id="${product.id}" title="Quick Add to Cart">
+            <i data-lucide="shopping-cart" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Update badges count
+function updateBadges() {
+  const cartBadgeBottom = document.getElementById("bottom-nav-cart-badge");
+  const wishlistBadgeHeader = document.getElementById("wishlist-badge");
+  const cartCountHeader = document.getElementById("cart-item-count-badge");
+  
+  const headerCartBadge = document.getElementById("header-cart-badge");
+  const pdpHeaderCartBadge = document.getElementById("pdp-header-cart-badge");
+  const notificationBadge = document.getElementById("notification-badge");
+  
+  // Cart items sum
+  const cartTotalQty = Store.cart.reduce((sum, item) => sum + item.quantity, 0);
+  
+  if (cartTotalQty > 0) {
+    cartBadgeBottom.textContent = cartTotalQty;
+    cartBadgeBottom.style.display = "flex";
+    
+    if (headerCartBadge) {
+      headerCartBadge.textContent = cartTotalQty;
+      headerCartBadge.style.display = "flex";
+    }
+    if (pdpHeaderCartBadge) {
+      pdpHeaderCartBadge.textContent = cartTotalQty;
+      pdpHeaderCartBadge.style.display = "flex";
+    }
+  } else {
+    cartBadgeBottom.style.display = "none";
+    if (headerCartBadge) headerCartBadge.style.display = "none";
+    if (pdpHeaderCartBadge) pdpHeaderCartBadge.style.display = "none";
+  }
+  
+  if (cartCountHeader) {
+    cartCountHeader.textContent = `${cartTotalQty} Item${cartTotalQty !== 1 ? 's' : ''}`;
+  }
+  
+  const wishlistCount = Store.wishlist.size;
+  if (wishlistCount > 0) {
+    wishlistBadgeHeader.textContent = wishlistCount;
+    wishlistBadgeHeader.style.display = "flex";
+  } else {
+    wishlistBadgeHeader.style.display = "none";
+  }
+
+  // Update notification badge count
+  const unreadNotifications = Store.notifications.filter(n => n.unread).length;
+  if (notificationBadge) {
+    if (unreadNotifications > 0) {
+      notificationBadge.textContent = unreadNotifications;
+      notificationBadge.style.display = "flex";
+    } else {
+      notificationBadge.style.display = "none";
+    }
+  }
+}
+
+
+// --- 5. SYSTEM FUNCTIONAL FLOWS ---
+
+// --- 4.5 USER DATABASE SYSTEM ---
+function initUserDatabase() {
+  let users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
+  if (!users["user@nexcart.com"]) {
+    users["user@nexcart.com"] = {
+      name: "Anonymous User",
+      email: "user@nexcart.com",
+      password: "password123",
+      phone: "+91 9876543210",
+      language: "English",
+      district: "New Delhi",
+      city: "Delhi",
+      address: "H.No 123, Block C, Connaught Place",
+      interests: ["Fashion", "Gadgets"],
+      completedDetails: true,
+      completedInterests: true,
+      addresses: [
+        {
+          id: "addr-1",
+          tag: "Home",
+          name: "Anonymous User",
+          street: "H.No 123, Block C, Connaught Place",
+          city: "Delhi",
+          district: "New Delhi",
+          phone: "+91 9876543210"
+        }
+      ]
+    };
+    localStorage.setItem("nexcart_users", JSON.stringify(users));
+  }
+}
+
+// AUTH SCREEN CONTROLS
+function initAuth() {
+  const loginTab = document.getElementById("btn-tab-login");
+  const regTab = document.getElementById("btn-tab-register");
+  const loginForm = document.getElementById("form-login");
+  const regForm = document.getElementById("form-register");
+  
+  loginTab.addEventListener("click", () => {
+    loginTab.classList.add("active");
+    regTab.classList.remove("active");
+    loginForm.classList.add("active");
+    regForm.classList.remove("active");
+  });
+  
+  regTab.addEventListener("click", () => {
+    regTab.classList.add("active");
+    loginTab.classList.remove("active");
+    regForm.classList.add("active");
+    loginForm.classList.remove("active");
+  });
+  
+  // Password Visibility Eye Buttons
+  const loginPassInput = document.getElementById("login-password");
+  const loginPassToggle = document.getElementById("login-password-toggle");
+  if (loginPassInput && loginPassToggle) {
+    loginPassToggle.addEventListener("click", () => {
+      const isPass = loginPassInput.type === "password";
+      loginPassInput.type = isPass ? "text" : "password";
+      loginPassToggle.innerHTML = `<i data-lucide="${isPass ? 'eye-off' : 'eye'}" style="width: 18px; height: 18px;"></i>`;
+      if (window.lucide) window.lucide.createIcons();
+    });
+  }
+
+  const regPassInput = document.getElementById("register-password");
+  const regPassToggle = document.getElementById("register-password-toggle");
+  if (regPassInput && regPassToggle) {
+    regPassToggle.addEventListener("click", () => {
+      const isPass = regPassInput.type === "password";
+      regPassInput.type = isPass ? "text" : "password";
+      regPassToggle.innerHTML = `<i data-lucide="${isPass ? 'eye-off' : 'eye'}" style="width: 18px; height: 18px;"></i>`;
+      if (window.lucide) window.lucide.createIcons();
+    });
+  }
+  
+  // Submit Login
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    
+    const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
+    const user = users[email];
+    
+    if (!user) {
+      // User doesn't exist, show warning alert and redirect to register tab
+      showAlert("Sign In Error", "You're new here, please sign up.", "error", () => {
+        regTab.click();
+        document.getElementById("register-email").value = email;
+      });
+      return;
+    }
+    
+    if (user.password !== password) {
+      showAlert("Auth Failed", "Incorrect password. Please try again.", "error");
+      return;
+    }
+    
+    // Save Active User Session
+    Store.currentUser = user;
+    localStorage.setItem("nexcart_active_user", email);
+    
+    // Check flow logic redirects
+    if (!user.completedDetails) {
+      document.getElementById("onboard-name").value = user.name || "";
+      document.getElementById("onboard-email").value = user.email || "";
+      document.getElementById("onboard-address").value = user.address || "";
+      showAlert("Login Successful", "Signed in successfully. Please complete your onboarding details.", "success", () => {
+        routeTo("screen-onboarding");
+      });
+    } else if (!user.completedInterests) {
+      showAlert("Welcome Back", "Please select your category interests to customize your dashboard.", "info", () => {
+        renderInterestsGrid();
+        routeTo("screen-interests");
+      });
+    } else {
+      showAlert("Welcome Back", `Successfully signed in as ${user.name}!`, "success", () => {
+        renderHomeScreen();
+        routeTo("screen-home");
+      });
+    }
+  });
+  
+  // Submit Register
+  regForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("register-name").value.trim();
+    const email = document.getElementById("register-email").value.trim();
+    const address = document.getElementById("register-address").value.trim();
+    const password = document.getElementById("register-password").value;
+    
+    const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
+    if (users[email]) {
+      showAlert("Account Exists", "This email address is already registered. Please Sign In.", "warning", () => {
+        loginTab.click();
+        document.getElementById("login-email").value = email;
+      });
+      return;
+    }
+    
+    // Create new account
+    const newUser = {
+      name: name,
+      email: email,
+      password: password,
+      address: address,
+      phone: "",
+      language: "English",
+      district: "",
+      city: "",
+      interests: [],
+      completedDetails: false,
+      completedInterests: false
+    };
+    
+    users[email] = newUser;
+    localStorage.setItem("nexcart_users", JSON.stringify(users));
+    
+    // Auto log in session
+    Store.currentUser = newUser;
+    localStorage.setItem("nexcart_active_user", email);
+    
+    // Auto pre-populate onboarding form fields
+    document.getElementById("onboard-name").value = name;
+    document.getElementById("onboard-email").value = email;
+    document.getElementById("onboard-address").value = address;
+    
+    showAlert("Success", "signup successfully", "success", () => {
+      routeTo("screen-onboarding");
+    });
+  });
+}
+
+// ONBOARDING FORM
+function initOnboarding() {
+  const form = document.getElementById("form-onboarding");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById("onboard-email").value;
+    const name = document.getElementById("onboard-name").value;
+    const phone = document.getElementById("onboard-phone").value;
+    const language = document.getElementById("onboard-lang").value;
+    const district = document.getElementById("onboard-district").value;
+    const city = document.getElementById("onboard-city").value;
+    const address = document.getElementById("onboard-address").value;
+    
+    const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
+    if (users[email]) {
+      users[email].name = name;
+      users[email].phone = phone;
+      users[email].language = language;
+      users[email].district = district;
+      users[email].city = city;
+      users[email].address = address;
+      users[email].completedDetails = true;
+      
+      localStorage.setItem("nexcart_users", JSON.stringify(users));
+      Store.currentUser = users[email];
+    }
+    
+    showAlert("Profile Completed", "Your details have been saved successfully.", "success", () => {
+      renderInterestsGrid();
+      routeTo("screen-interests");
+    });
+  });
+}
+
+// INTERESTS SCREEN
+function renderInterestsGrid() {
+  const container = document.getElementById("interest-chips-container");
+  container.innerHTML = INTEREST_CATEGORIES.map(cat => {
+    const isSelected = Store.currentUser.interests.includes(cat.label);
+    return `
+      <div class="interest-card ${isSelected ? 'selected' : ''}" data-label="${cat.label}">
+        <div class="interest-icon-wrap">
+          <i data-lucide="${cat.icon}"></i>
+        </div>
+        <span class="interest-label">${cat.label}</span>
+      </div>
+    `;
+  }).join('');
+  
+  // Add listeners
+  document.querySelectorAll(".interest-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const label = card.getAttribute("data-label");
+      const index = Store.currentUser.interests.indexOf(label);
+      if (index === -1) {
+        Store.currentUser.interests.push(label);
+        card.classList.add("selected");
+      } else {
+        Store.currentUser.interests.splice(index, 1);
+        card.classList.remove("selected");
+      }
+    });
+  });
+  
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function initInterests() {
+  const continueBtn = document.getElementById("btn-interests-continue");
+  continueBtn.addEventListener("click", () => {
+    const email = Store.currentUser.email;
+    
+    const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
+    if (users[email]) {
+      users[email].interests = Store.currentUser.interests;
+      users[email].completedInterests = true;
+      
+      localStorage.setItem("nexcart_users", JSON.stringify(users));
+      Store.currentUser = users[email];
+    }
+    
+    showAlert("Preferences Saved", "Your feed is now fully customized based on your interests.", "success", () => {
+      renderHomeScreen();
+      routeTo("screen-home");
+    });
+  });
+}
+
+// HOME SCREEN VIEW
+function renderHomeScreen() {
+  // 1. Carousel Slides
+  const carousel = document.getElementById("home-carousel");
+  
+  // Render slide items
+  let slidesHTML = BANNER_SLIDES.map((slide, index) => `
+    <div class="hero-slide ${index === 0 ? 'active' : ''}" style="background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.75)), url('${slide.image}');">
+      <span class="hero-tag">${slide.tag}</span>
+      <h3 class="hero-title">${slide.title}</h3>
+      <p class="hero-desc">${slide.desc}</p>
+      <button class="btn btn-accent btn-sm" style="width: auto; align-self: flex-start;" id="btn-carousel-shop-${index}">Shop Now</button>
+    </div>
+  `).join('');
+  
+  // Render slide indicator dots
+  let indicatorsHTML = `<div class="carousel-indicators">` + BANNER_SLIDES.map((_, index) => `
+    <span class="indicator-dot ${index === 0 ? 'active' : ''}" data-slide="${index}"></span>
+  `).join('') + `</div>`;
+  
+  carousel.innerHTML = slidesHTML + indicatorsHTML;
+  
+  // Initialize slider interval
+  let activeSlide = 0;
+  const slides = carousel.querySelectorAll(".hero-slide");
+  const dots = carousel.querySelectorAll(".indicator-dot");
+  
+  function setSlide(index) {
+    slides[activeSlide].classList.remove("active");
+    dots[activeSlide].classList.remove("active");
+    activeSlide = index;
+    slides[activeSlide].classList.add("active");
+    dots[activeSlide].classList.add("active");
+  }
+  
+  // Auto Rotate
+  let slideInterval = setInterval(() => {
+    let next = (activeSlide + 1) % BANNER_SLIDES.length;
+    setSlide(next);
+  }, 5000);
+  
+  // Indicator Click
+  dots.forEach(dot => {
+    dot.addEventListener("click", () => {
+      clearInterval(slideInterval);
+      const target = parseInt(dot.getAttribute("data-slide"));
+      setSlide(target);
+    });
+  });
+  
+  // Carousel button actions
+  document.getElementById("btn-carousel-shop-0").addEventListener("click", () => {
+    showCategoryProducts("Fashion");
+    routeTo("screen-categories");
+  });
+  document.getElementById("btn-carousel-shop-1").addEventListener("click", () => {
+    showCategoryProducts("Gadgets");
+    routeTo("screen-categories");
+  });
+
+  // 2. Trending Products
+  const trendingContainer = document.getElementById("row-trending");
+  const trendingProducts = PRODUCT_CATALOG.filter(p => p.trending);
+  trendingContainer.innerHTML = trendingProducts.map(p => createProductCardHTML(p)).join('');
+
+  // 3. Suggestions Section (Interest based matches)
+  const suggestionsSection = document.getElementById("suggestions-section");
+  const suggestionsContainer = document.getElementById("row-suggestions");
+  
+  if (Store.currentUser.interests.length > 0) {
+    const suggestedProducts = PRODUCT_CATALOG.filter(p => 
+      Store.currentUser.interests.includes(p.interestGroup)
+    );
+    
+    if (suggestedProducts.length > 0) {
+      suggestionsSection.style.display = "block";
+      suggestionsContainer.innerHTML = suggestedProducts.map(p => createProductCardHTML(p)).join('');
+    } else {
+      suggestionsSection.style.display = "none";
+    }
+  } else {
+    suggestionsSection.style.display = "none";
+  }
+
+  // 4. Recently Watched Section
+  const recentlyWatchedSection = document.getElementById("recently-watched-section");
+  const recentlyWatchedContainer = document.getElementById("row-recently-watched");
+  
+  if (Store.recentlyWatched.length > 0) {
+    recentlyWatchedSection.style.display = "block";
+    recentlyWatchedContainer.innerHTML = Store.recentlyWatched.map(p => createProductCardHTML(p)).join('');
+  } else {
+    recentlyWatchedSection.style.display = "none";
+  }
+
+  // 5. Explore Products Grid View
+  const homeGridContainer = document.getElementById("home-product-grid");
+  if (homeGridContainer) {
+    homeGridContainer.innerHTML = PRODUCT_CATALOG.map(p => createProductCardHTML(p)).join('');
+  }
+  
+  attachProductCardEvents();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+// CATEGORIES SCREEN VIEW
+function showCategoryProducts(catId) {
+  // Update sidebar selection
+  document.querySelectorAll(".sidebar-tab").forEach(tab => {
+    if (tab.getAttribute("data-cat") === catId) {
+      tab.classList.add("active");
+    } else {
+      tab.classList.remove("active");
+    }
+  });
+
+  const headerTitle = document.getElementById("category-content-title");
+  headerTitle.textContent = catId;
+  
+  const gridContainer = document.getElementById("category-product-grid");
+  
+  // Show skeletal loaders first to mock networking latency
+  gridContainer.innerHTML = Array(4).fill(0).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton-img skeleton"></div>
+      <div class="skeleton-text title skeleton"></div>
+      <div class="skeleton-text price skeleton"></div>
+    </div>
+  `).join('');
+  
+  setTimeout(() => {
+    // Filter product catalogue
+    const filteredProducts = PRODUCT_CATALOG.filter(p => p.category === catId);
+    
+    if (filteredProducts.length > 0) {
+      gridContainer.innerHTML = filteredProducts.map(p => createProductCardHTML(p)).join('');
+    } else {
+      gridContainer.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-secondary);">
+          <i data-lucide="frown" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
+          <p style="font-weight: 600;">No items found in this category.</p>
+        </div>
+      `;
+    }
+    
+    attachProductCardEvents();
+    if (window.lucide) window.lucide.createIcons();
+  }, 400);
+}
+
+function initCategories() {
+  const sidebar = document.getElementById("categories-sidebar");
+  
+  // Render sidebar tabs
+  sidebar.innerHTML = CATEGORY_TABS.map(tab => `
+    <div class="sidebar-tab" data-cat="${tab.id}">
+      <i data-lucide="${tab.icon}"></i>
+      <span>${tab.label}</span>
+    </div>
+  `).join('');
+  
+  // Add tab click listeners
+  sidebar.querySelectorAll(".sidebar-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const catId = tab.getAttribute("data-cat");
+      showCategoryProducts(catId);
+    });
+  });
+  
+  // Default to first tab (Fashion)
+  showCategoryProducts("Fashion");
+}
+
+// PRODUCT DETAILS SCREEN (PDP)
+let pdpSelectedSize = "";
+let pdpSelectedColor = "";
+let pdpCarouselInterval = null;
+let pdpActiveSlide = 0;
+
+let activeHistoryPage = 1;
+
+function renderBrowsingHistory(currentProductId) {
+  const section = document.querySelector(".browsing-history-section");
+  const track = document.getElementById("history-carousel-slider-track");
+  const leftBtn = document.getElementById("btn-history-scroll-left");
+  const rightBtn = document.getElementById("btn-history-scroll-right");
+  const label = document.getElementById("browsing-history-pages-lbl");
+  
+  if (!track || !leftBtn || !rightBtn || !label) return;
+
+  // Use real recently-watched list, exclude the currently open product
+  const historyProducts = Store.recentlyWatched.filter(p => p.id !== currentProductId);
+
+  // Hide section if no history
+  if (!historyProducts.length) {
+    if (section) section.style.display = "none";
+    return;
+  }
+  if (section) section.style.display = "block";
+
+  const CARDS_PER_PAGE = 4;
+  const totalHistoryPages = Math.ceil(historyProducts.length / CARDS_PER_PAGE);
+
+  track.innerHTML = historyProducts.map(p => {
+    const discount = p.mrp ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
+    return `
+    <div class="history-card" data-history-id="${p.id}" style="cursor: pointer; flex-shrink: 0; width: 140px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background-color: var(--bg-primary); text-align: center; display: flex; flex-direction: column; gap: 6px; transition: box-shadow 0.2s, transform 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='translateY(0)'">
+      <div style="width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; background-color: var(--bg-secondary); border-radius: var(--radius-sm); overflow: hidden;">
+        <img src="${p.image}" alt="${p.name}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+      </div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-primary); text-align: left; height: 32px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3;">${p.name}</div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 11px; font-weight: 800; color: var(--accent-hover);">₹${p.price.toLocaleString("en-IN")}</span>
+        ${discount > 0 ? `<span style="font-size: 10px; font-weight: 700; color: var(--danger);">${discount}% off</span>` : ''}
+      </div>
+    </div>
+  `;
+  }).join('');
+
+  // Attach click events to open product details
+  track.querySelectorAll(".history-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const pid = card.getAttribute("data-history-id");
+      openProductDetails(pid);
+    });
+  });
+
+  function updateHistoryCarousel() {
+    const cardWidth = 140 + 12; // card width + gap
+    const shiftPx = (activeHistoryPage - 1) * CARDS_PER_PAGE * cardWidth;
+    track.style.transform = `translateX(-${shiftPx}px)`;
+    label.textContent = `Page ${activeHistoryPage} of ${totalHistoryPages}`;
+    
+    leftBtn.style.opacity = activeHistoryPage === 1 ? "0.4" : "1";
+    leftBtn.style.pointerEvents = activeHistoryPage === 1 ? "none" : "auto";
+    
+    rightBtn.style.opacity = activeHistoryPage >= totalHistoryPages ? "0.4" : "1";
+    rightBtn.style.pointerEvents = activeHistoryPage >= totalHistoryPages ? "none" : "auto";
+  }
+
+  leftBtn.onclick = (e) => {
+    e.preventDefault();
+    if (activeHistoryPage > 1) {
+      activeHistoryPage--;
+      updateHistoryCarousel();
+    }
+  };
+
+  rightBtn.onclick = (e) => {
+    e.preventDefault();
+    if (activeHistoryPage < totalHistoryPages) {
+      activeHistoryPage++;
+      updateHistoryCarousel();
+    }
+  };
+
+  activeHistoryPage = 1;
+  updateHistoryCarousel();
+}
+
+function initPDPSlider(product) {
+  const thumbsContainer = document.getElementById("pdp-vertical-thumbnails");
+  const mainImage = document.getElementById("pdp-main-gallery-image");
+  const mainTrigger = document.getElementById("pdp-main-image-trigger");
+  
+  if (!thumbsContainer || !mainImage || !mainTrigger) return;
+  
+  if (pdpCarouselInterval) {
+    clearInterval(pdpCarouselInterval);
+    pdpCarouselInterval = null;
+  }
+  
+  pdpActiveSlide = 0;
+  
+  // Render thumbnails
+  thumbsContainer.innerHTML = product.images.map((img, idx) => `
+    <div class="pdp-thumbnail-card ${idx === 0 ? 'active' : ''}" data-thumb-idx="${idx}">
+      <img src="${img}" alt="${product.name} Thumbnail">
+    </div>
+  `).join('');
+  
+  mainImage.src = product.images[0];
+  mainImage.alt = product.name;
+  
+  const totalSlides = product.images.length;
+  
+  function showSlide(index) {
+    pdpActiveSlide = (index + totalSlides) % totalSlides;
+    mainImage.src = product.images[pdpActiveSlide];
+    
+    thumbsContainer.querySelectorAll(".pdp-thumbnail-card").forEach((card, idx) => {
+      if (idx === pdpActiveSlide) {
+        card.classList.add("active");
+        
+        // Custom container-relative scrolling instead of browser-level scrollIntoView
+        const containerTop = thumbsContainer.scrollTop;
+        const containerHeight = thumbsContainer.clientHeight;
+        const cardTop = card.offsetTop;
+        const cardHeight = card.offsetHeight;
+        
+        if (cardTop < containerTop) {
+          thumbsContainer.scrollTop = cardTop;
+        } else if (cardTop + cardHeight > containerTop + containerHeight) {
+          thumbsContainer.scrollTop = cardTop + cardHeight - containerHeight;
+        }
+        
+        const containerLeft = thumbsContainer.scrollLeft;
+        const containerWidth = thumbsContainer.clientWidth;
+        const cardLeft = card.offsetLeft;
+        const cardWidth = card.offsetWidth;
+        
+        if (cardLeft < containerLeft) {
+          thumbsContainer.scrollLeft = cardLeft;
+        } else if (cardLeft + cardWidth > containerLeft + containerWidth) {
+          thumbsContainer.scrollLeft = cardLeft + cardWidth - containerWidth;
+        }
+      } else {
+        card.classList.remove("active");
+      }
+    });
+  }
+  
+  pdpCarouselInterval = setInterval(() => {
+    showSlide(pdpActiveSlide + 1);
+  }, 3000);
+  
+  thumbsContainer.querySelectorAll(".pdp-thumbnail-card").forEach(card => {
+    card.addEventListener("click", () => {
+      clearInterval(pdpCarouselInterval);
+      const idx = parseInt(card.getAttribute("data-thumb-idx"));
+      showSlide(idx);
+      pdpCarouselInterval = setInterval(() => {
+        showSlide(pdpActiveSlide + 1);
+      }, 3000);
+    });
+  });
+  
+  mainTrigger.onclick = () => {
+    const lightboxModal = document.getElementById("pdp-lightbox-modal");
+    const lightboxImg = document.getElementById("pdp-lightbox-img");
+    if (lightboxModal && lightboxImg) {
+      lightboxImg.src = product.images[pdpActiveSlide];
+      lightboxModal.style.display = "flex";
+    }
+  };
+  
+  const closeLightboxBtn = document.getElementById("btn-close-lightbox");
+  if (closeLightboxBtn) {
+    closeLightboxBtn.onclick = () => {
+      document.getElementById("pdp-lightbox-modal").style.display = "none";
+    };
+  }
+  
+  let startX = 0;
+  let isDragging = false;
+  
+  mainImage.addEventListener("touchstart", (e) => {
+    clearInterval(pdpCarouselInterval);
+    startX = e.touches[0].clientX;
+    isDragging = true;
+  }, { passive: true });
+  
+  mainImage.addEventListener("touchend", (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    const endX = e.changedTouches[0].clientX;
+    const diff = startX - endX;
+    
+    if (diff > 50) {
+      showSlide(pdpActiveSlide + 1);
+    } else if (diff < -50) {
+      showSlide(pdpActiveSlide - 1);
+    }
+    
+    pdpCarouselInterval = setInterval(() => {
+      showSlide(pdpActiveSlide + 1);
+    }, 3000);
+  });
+  
+  mainImage.addEventListener("pointerdown", (e) => {
+    clearInterval(pdpCarouselInterval);
+    startX = e.clientX;
+    isDragging = true;
+    mainImage.setPointerCapture(e.pointerId);
+  });
+  
+  mainImage.addEventListener("pointerup", (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    const endX = e.clientX;
+    const diff = startX - endX;
+    
+    if (diff > 50) {
+      showSlide(pdpActiveSlide + 1);
+    } else if (diff < -50) {
+      showSlide(pdpActiveSlide - 1);
+    }
+    
+    pdpCarouselInterval = setInterval(() => {
+      showSlide(pdpActiveSlide + 1);
+    }, 3000);
+  });
+}
+
+function openProductDetails(productId) {
+  const product = PRODUCT_CATALOG.find(p => p.id === productId);
+  if (!product) return;
+  
+  const index = Store.recentlyWatched.findIndex(p => p.id === productId);
+  if (index !== -1) Store.recentlyWatched.splice(index, 1);
+  Store.recentlyWatched.unshift(product);
+  if (Store.recentlyWatched.length > 6) Store.recentlyWatched.pop();
+
+  if (document.getElementById("pdp-nav-title")) document.getElementById("pdp-nav-title").textContent = product.name;
+  if (document.getElementById("pdp-cat-label")) document.getElementById("pdp-cat-label").textContent = product.category;
+  if (document.getElementById("pdp-name-label")) document.getElementById("pdp-name-label").textContent = product.name;
+  if (document.getElementById("pdp-rating-val")) document.getElementById("pdp-rating-val").textContent = product.rating;
+  if (document.getElementById("pdp-reviews-label")) document.getElementById("pdp-reviews-label").textContent = `${product.reviews.toLocaleString()} ratings`;
+  
+  if (document.getElementById("pdp-price-current-label")) document.getElementById("pdp-price-current-label").textContent = `₹${product.price.toLocaleString("en-IN")}`;
+  if (document.getElementById("pdp-price-mrp-label")) document.getElementById("pdp-price-mrp-label").textContent = `₹${product.mrp.toLocaleString("en-IN")}`;
+  
+  const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
+  if (document.getElementById("pdp-discount-label")) document.getElementById("pdp-discount-label").textContent = `${discount}% OFF`;
+  if (document.getElementById("pdp-desc-text")) document.getElementById("pdp-desc-text").textContent = product.description;
+
+  // Initialize carousel swiper & thumbs gallery
+  initPDPSlider(product);
+
+  document.getElementById("pdp-warranty-text").textContent = product.warranty;
+  document.getElementById("pdp-stars-container").innerHTML = getStarsHTML(product.rating);
+
+  const highlightsSec = document.getElementById("pdp-highlights-section");
+  const highlightsList = document.getElementById("pdp-highlights-list");
+  if (highlightsSec && highlightsList) {
+    if (product.highlights && product.highlights.length > 0) {
+      highlightsSec.style.display = "flex";
+      highlightsList.innerHTML = product.highlights.map(hl => `<li>${hl}</li>`).join('');
+    } else {
+      highlightsSec.style.display = "none";
+    }
+  }
+
+  // Related Products Grid View
+  const relatedGrid = document.getElementById("pdp-related-products-grid");
+  if (relatedGrid) {
+    const related = PRODUCT_CATALOG.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+    if (related.length > 0) {
+      relatedGrid.innerHTML = related.map(p => createProductCardHTML(p)).join('');
+    } else {
+      relatedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-light); font-size: 12px; padding: 20px;">No related products found.</div>`;
+    }
+  }
+
+  const pdpWishBtn = document.getElementById("pdp-wishlist-btn");
+  pdpWishBtn.setAttribute("data-product-id", product.id);
+  if (Store.wishlist.has(product.id)) {
+    pdpWishBtn.classList.add("active");
+    pdpWishBtn.style.color = "var(--danger)";
+    pdpWishBtn.innerHTML = '<i data-lucide="heart" style="fill: currentColor;"></i>';
+  } else {
+    pdpWishBtn.classList.remove("active");
+    pdpWishBtn.style.color = "var(--text-secondary)";
+    pdpWishBtn.innerHTML = '<i data-lucide="heart"></i>';
+  }
+
+  // Set Right Column Sticky card values
+  document.getElementById("pdp-checkout-panel-price").textContent = `₹${product.price.toLocaleString("en-IN")}`;
+  
+  const delivDate = new Date();
+  delivDate.setDate(delivDate.getDate() + 3);
+  const options = { weekday: 'long', day: 'numeric', month: 'long' };
+  document.getElementById("pdp-checkout-deliv-date").textContent = delivDate.toLocaleDateString("en-US", options);
+
+  // Default quantity selector reset
+  document.getElementById("pdp-qty-select").value = "1";
+
+  // Hook up right column checkout buttons
+  document.getElementById("btn-pdp-right-add-cart").onclick = () => {
+    const qty = parseInt(document.getElementById("pdp-qty-select").value);
+    addToCart(product, qty, pdpSelectedSize, pdpSelectedColor);
+    showAlert("Cart Updated", `Added ${qty} item(s) to Cart!`, "success");
+    updateBadges();
+  };
+
+  document.getElementById("btn-pdp-right-buy-now").onclick = () => {
+    const qty = parseInt(document.getElementById("pdp-qty-select").value);
+    Store.checkoutSingleItem = {
+      product: product,
+      quantity: qty,
+      size: pdpSelectedSize || "M",
+      color: pdpSelectedColor || "Black"
+    };
+    initiateCheckout();
+  };
+
+  // Render Conditional Selectors
+  const attributesContainer = document.getElementById("pdp-conditional-attributes-container");
+  attributesContainer.innerHTML = "";
+  
+  pdpSelectedSize = "";
+  pdpSelectedColor = "";
+  
+  if (product.category === "Fashion") {
+    pdpSelectedSize = product.sizes[0];
+    pdpSelectedColor = product.colors[0].name;
+    
+    let sizesHTML = product.sizes.map((size, idx) => `
+      <button class="size-chip ${idx === 0 ? 'selected' : ''}" data-size="${size}">${size}</button>
+    `).join('');
+    
+    let colorsHTML = product.colors.map((color, idx) => `
+      <button class="color-chip ${idx === 0 ? 'selected' : ''}" data-color="${color.name}" style="background-color: ${color.hex};" title="${color.name}"></button>
+    `).join('');
+    
+    attributesContainer.innerHTML = `
+      <div class="pdp-variants-container">
+        <div>
+          <h4 class="variant-title" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">Select Size:</h4>
+          <div class="size-chips" style="display: flex; gap: 8px;">${sizesHTML}</div>
+        </div>
+        <div style="margin-top: 10px;">
+          <h4 class="variant-title" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">Select Color:</h4>
+          <div class="color-chips" style="display: flex; gap: 8px;">${colorsHTML}</div>
+        </div>
+      </div>
+    `;
+    
+    attributesContainer.querySelectorAll(".size-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        attributesContainer.querySelectorAll(".size-chip").forEach(c => c.classList.remove("selected"));
+        chip.classList.add("selected");
+        pdpSelectedSize = chip.getAttribute("data-size");
+      });
+    });
+    
+    attributesContainer.querySelectorAll(".color-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        attributesContainer.querySelectorAll(".color-chip").forEach(c => c.classList.remove("selected"));
+        chip.classList.add("selected");
+        pdpSelectedColor = chip.getAttribute("data-color");
+      });
+    });
+    
+  } else if (product.specs) {
+    let specsRows = Object.entries(product.specs).map(([key, val]) => `
+      <tr>
+        <td style="font-size: 11px; font-weight: 700; color: var(--text-secondary); padding: 4px 8px; border: 1px solid var(--border-color);">${key}</td>
+        <td style="font-size: 11px; color: var(--text-primary); padding: 4px 8px; border: 1px solid var(--border-color);">${val}</td>
+      </tr>
+    `).join('');
+    
+    attributesContainer.innerHTML = `
+      <div>
+        <h4 class="variant-title" style="font-size: 12px; font-weight: 800; margin-bottom: 6px;">Technical Specifications</h4>
+        <table class="specs-table" style="width: 100%; border-collapse: collapse; border: 1px solid var(--border-color);">
+          <tbody>${specsRows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+  
+  // Render Browsing History track (pass current product to exclude it)
+  renderBrowsingHistory(productId);
+  
+  setTimeout(() => attachProductCardEvents(), 50);
+
+  if (window.lucide) window.lucide.createIcons();
+  
+  // Scroll PDP content area back to top every time a product is opened
+  const pdpScrollArea = document.querySelector(".pdp-scrollable-content");
+  if (pdpScrollArea) pdpScrollArea.scrollTop = 0;
+  
+  routeTo("screen-pdp");
+}
+
+function initPDP() {
+  // Back Button
+  document.getElementById("btn-pdp-back").addEventListener("click", () => {
+    if (Store.activeTab === "categories") {
+      routeTo("screen-categories");
+    } else {
+      routeTo("screen-home");
+    }
+  });
+
+  // PDP Navbar Cart Button
+  document.getElementById("pdp-header-cart-btn").addEventListener("click", () => {
+    renderCartScreen();
+    routeTo("screen-cart");
+  });
+  
+  // Wishlist toggle on PDP
+  const wishBtn = document.getElementById("pdp-wishlist-btn");
+  wishBtn.addEventListener("click", () => {
+    const id = wishBtn.getAttribute("data-product-id");
+    toggleWishlist(id, wishBtn);
+  });
+  
+}
+
+// CART & CHECKOUT CONTROLS
+function addToCart(product, quantity = 1, size = "", color = "") {
+  // Search if item with same details already exists in cart
+  const itemIndex = Store.cart.findIndex(item => 
+    item.product.id === product.id && item.size === size && item.color === color
+  );
+  
+  if (itemIndex > -1) {
+    Store.cart[itemIndex].quantity += quantity;
+  } else {
+    Store.cart.push({
+      product: product,
+      quantity: quantity,
+      size: size,
+      color: color
+    });
+  }
+  updateBadges();
+}
+
+function updateCartQuantity(cartIndex, change) {
+  const item = Store.cart[cartIndex];
+  if (!item) return;
+  
+  item.quantity += change;
+  if (item.quantity <= 0) {
+    Store.cart.splice(cartIndex, 1);
+    showToast("Item removed from Cart");
+  }
+  
+  renderCartScreen();
+  updateBadges();
+}
+
+function removeCartItem(cartIndex) {
+  Store.cart.splice(cartIndex, 1);
+  showToast("Item removed from Cart");
+  renderCartScreen();
+  updateBadges();
+}
+
+function renderCartScreen() {
+  const listContainer = document.getElementById("cart-items-container");
+  const footerBar = document.getElementById("cart-footer-bar");
+  
+  if (Store.cart.length === 0) {
+    footerBar.style.display = "none";
+    listContainer.innerHTML = `
+      <div class="empty-cart-state">
+        <div class="empty-cart-icon">
+          <i data-lucide="shopping-cart" style="width: 36px; height: 36px;"></i>
+        </div>
+        <h3 class="empty-cart-title">Your Cart is Empty</h3>
+        <p class="empty-cart-text">Looks like you haven't added anything to your cart yet.</p>
+        <button class="btn btn-primary btn-sm" id="btn-empty-cart-shop" style="width: auto;">Shop Now</button>
+      </div>
+    `;
+    
+    document.getElementById("btn-empty-cart-shop").addEventListener("click", () => {
+      showCategoryProducts("Fashion");
+      routeTo("screen-categories");
+    });
+  } else {
+    footerBar.style.display = "flex";
+    
+    listContainer.innerHTML = Store.cart.map((item, index) => {
+      const discount = Math.round(((item.product.mrp - item.product.price) / item.product.mrp) * 100);
+      const variantText = item.product.category === "Fashion" ? `Size: ${item.size} | Color: ${item.color}` : "";
+      
+      return `
+        <div class="cart-item-card">
+          <div class="cart-item-img-wrap">
+            <img src="${item.product.image}" alt="${item.product.name}" class="cart-item-img">
+          </div>
+          
+          <div class="cart-item-info">
+            <h4 class="cart-item-title">${item.product.name}</h4>
+            ${variantText ? `<div class="cart-item-variants">${variantText}</div>` : ''}
+            
+            <div class="cart-item-price-row">
+              <span class="cart-item-price">₹${(item.product.price * item.quantity).toLocaleString("en-IN")}</span>
+              
+              <div class="quantity-controller">
+                <button class="qty-btn" data-index="${index}" data-change="-1">-</button>
+                <div class="qty-number">${item.quantity}</div>
+                <button class="qty-btn" data-index="${index}" data-change="1">+</button>
+              </div>
+            </div>
+            
+            <div class="cart-item-actions">
+              <button class="cart-action-btn remove" data-index="${index}">
+                <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                <span>Remove</span>
+              </button>
+              <button class="cart-action-btn buy-now" data-index="${index}">
+                <i data-lucide="zap" style="width: 12px; height: 12px;"></i>
+                <span>Buy Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    // Add quantity click events
+    listContainer.querySelectorAll(".qty-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const idx = parseInt(btn.getAttribute("data-index"));
+        const change = parseInt(btn.getAttribute("data-change"));
+        updateCartQuantity(idx, change);
+      });
+    });
+    
+    // Add remove events
+    listContainer.querySelectorAll(".cart-action-btn.remove").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const idx = parseInt(btn.getAttribute("data-index"));
+        removeCartItem(idx);
+      });
+    });
+    
+    // Add Buy Now click events
+    listContainer.querySelectorAll(".cart-action-btn.buy-now").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const idx = parseInt(btn.getAttribute("data-index"));
+        const item = Store.cart[idx];
+        Store.checkoutSingleItem = {
+          product: item.product,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color
+        };
+        initiateCheckout();
+      });
+    });
+    
+    // Update total price
+    const subtotal = Store.cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    document.getElementById("cart-subtotal-val").textContent = `₹${subtotal.toLocaleString("en-IN")}`;
+  }
+  
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function initCart() {
+  document.getElementById("btn-cart-place-order").addEventListener("click", () => {
+    Store.checkoutSingleItem = null; // checkout whole cart
+    initiateCheckout();
+  });
+}
+
+// CHECKOUT SCREEN FLOW
+function initiateCheckout() {
+  // Ensure checkoutActiveAddress is set
+  if (!checkoutActiveAddress) {
+    if (Store.currentUser.addresses && Store.currentUser.addresses.length > 0) {
+      checkoutActiveAddress = Store.currentUser.addresses[0];
+    } else {
+      checkoutActiveAddress = {
+        id: "addr-1",
+        tag: "Home",
+        name: Store.currentUser.name,
+        street: Store.currentUser.address,
+        city: Store.currentUser.city || "Delhi",
+        district: Store.currentUser.district || "New Delhi",
+        phone: Store.currentUser.phone
+      };
+      Store.currentUser.addresses = [checkoutActiveAddress];
+      saveUserToDatabase();
+    }
+  }
+
+  // Address card fill
+  const addressBox = document.getElementById("checkout-address-box");
+  addressBox.innerHTML = `
+    <div class="address-name">${checkoutActiveAddress.name}</div>
+    <div>${checkoutActiveAddress.street}</div>
+    <div>District: ${checkoutActiveAddress.district}, City: ${checkoutActiveAddress.city}</div>
+    <div style="margin-top: 6px; font-weight: 600; color: var(--text-primary);">Mobile: ${checkoutActiveAddress.phone}</div>
+  `;
+  
+  // Get items list for checkout
+  let items = [];
+  if (Store.checkoutSingleItem) {
+    items = [Store.checkoutSingleItem];
+  } else {
+    items = Store.cart;
+  }
+  
+  if (items.length === 0) {
+    showToast("No products to check out!", "error");
+    return;
+  }
+  
+  // Render Checkout Items List
+  const itemsContainer = document.getElementById("checkout-items-preview-list");
+  itemsContainer.innerHTML = items.map((item, index) => {
+    const metaText = item.product.category === "Fashion" ? `(${item.size}, ${item.color})` : "";
+    return `
+      <div class="checkout-item-preview" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="${item.product.image}" alt="${item.product.name}" class="checkout-preview-img" style="width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: contain; background-color: var(--bg-secondary);">
+          <div class="checkout-preview-info">
+            <div class="checkout-preview-name" style="font-size: 13px; font-weight: 700; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.product.name}</div>
+            <div class="checkout-preview-meta" style="font-size: 11px; color: var(--text-secondary);">₹${item.product.price.toLocaleString("en-IN")} ${metaText}</div>
+          </div>
+        </div>
+        
+        <!-- Interactive quantity editor -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn-checkout-qty-minus" data-checkout-idx="${index}" style="width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; cursor: pointer; color: var(--text-primary); background-color: var(--bg-primary);">-</button>
+          <span style="font-size: 13px; font-weight: 700; min-width: 14px; text-align: center;">${item.quantity}</span>
+          <button class="btn-checkout-qty-plus" data-checkout-idx="${index}" style="width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; cursor: pointer; color: var(--text-primary); background-color: var(--bg-primary);">+</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Attach click listeners to checkout quantity buttons
+  itemsContainer.querySelectorAll(".btn-checkout-qty-minus").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.getAttribute("data-checkout-idx"));
+      const isSingle = !!Store.checkoutSingleItem;
+      let targetItem = isSingle ? Store.checkoutSingleItem : Store.cart[idx];
+      
+      if (targetItem.quantity > 1) {
+        targetItem.quantity--;
+      } else {
+        // Remove item
+        if (isSingle) {
+          Store.checkoutSingleItem = null;
+          routeTo("screen-cart");
+          return;
+        } else {
+          Store.cart.splice(idx, 1);
+        }
+      }
+      saveUserToDatabase();
+      updateBadges();
+      initiateCheckout();
+    });
+  });
+
+  itemsContainer.querySelectorAll(".btn-checkout-qty-plus").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.getAttribute("data-checkout-idx"));
+      const isSingle = !!Store.checkoutSingleItem;
+      let targetItem = isSingle ? Store.checkoutSingleItem : Store.cart[idx];
+      
+      targetItem.quantity++;
+      saveUserToDatabase();
+      updateBadges();
+      initiateCheckout();
+    });
+  });
+  
+  // Calculate Totals
+  const totalItemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const mrpTotal = items.reduce((sum, item) => sum + (item.product.mrp * item.quantity), 0);
+  const finalTotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const discountTotal = mrpTotal - finalTotal;
+  
+  document.getElementById("checkout-total-items-qty").textContent = totalItemsCount;
+  document.getElementById("checkout-mrp-total").textContent = `₹${mrpTotal.toLocaleString("en-IN")}`;
+  document.getElementById("checkout-discount-total").textContent = `-₹${discountTotal.toLocaleString("en-IN")}`;
+  document.getElementById("checkout-final-amount").textContent = `₹${finalTotal.toLocaleString("en-IN")}`;
+  
+  // Set total in next step (Payment screen)
+  document.getElementById("payment-pay-amount").textContent = `₹${finalTotal.toLocaleString("en-IN")}`;
+  
+  // Toggle EMI payment method visibility
+  const emiCard = document.getElementById("payment-option-emi");
+  if (finalTotal > 3000) {
+    emiCard.classList.remove("disabled");
+    emiCard.style.pointerEvents = "auto";
+    emiCard.querySelector(".payment-option-sub").textContent = "Available for your order total!";
+  } else {
+    emiCard.classList.add("disabled");
+    emiCard.style.pointerEvents = "none";
+    emiCard.querySelector(".payment-option-sub").textContent = "Only available on orders above ₹3,000";
+    if (emiCard.classList.contains("selected")) {
+      // Shift default selection to UPI if EMI was active
+      selectPaymentMethod("UPI");
+    }
+  }
+
+  routeTo("screen-checkout");
+}
+
+function initCheckoutScreen() {
+  document.getElementById("btn-checkout-back").addEventListener("click", () => {
+    if (Store.checkoutSingleItem) {
+      openProductDetails(Store.checkoutSingleItem.product.id);
+    } else {
+      routeTo("screen-cart");
+    }
+  });
+
+  document.getElementById("btn-checkout-change-address").addEventListener("click", () => {
+    openAddressManagementSheet(selectedAddr => {
+      checkoutActiveAddress = selectedAddr;
+      
+      const addressBox = document.getElementById("checkout-address-box");
+      addressBox.innerHTML = `
+        <div class="address-name">${selectedAddr.name}</div>
+        <div>${selectedAddr.street}</div>
+        <div>District: ${selectedAddr.district}, City: ${selectedAddr.city}</div>
+        <div style="margin-top: 6px; font-weight: 600; color: var(--text-primary);">Mobile: ${selectedAddr.phone}</div>
+      `;
+      
+      showAlert("Address Updated", `Delivery address changed to: ${selectedAddr.tag}`, "success");
+    });
+  });
+
+  // Promo code is now handled on Payment screen via Gift Card / Promo Coupon option
+  
+  document.getElementById("btn-checkout-continue").addEventListener("click", () => {
+    routeTo("screen-payment");
+  });
+}
+
+// PAYMENT SCREEN FLOW
+let selectedPaymentMethod = "UPI";
+
+function selectPaymentMethod(methodName) {
+  selectedPaymentMethod = methodName;
+  document.querySelectorAll(".payment-option-card").forEach(card => {
+    if (card.getAttribute("data-method") === methodName) {
+      card.classList.add("selected");
+    } else {
+      card.classList.remove("selected");
+    }
+  });
+}
+
+function initPaymentScreen() {
+  document.getElementById("btn-payment-back").addEventListener("click", () => {
+    routeTo("screen-checkout");
+  });
+  
+  // Select method clicks
+  document.querySelectorAll(".payment-option-card").forEach(card => {
+    card.addEventListener("click", () => {
+      if (card.classList.contains("disabled")) return;
+      const method = card.getAttribute("data-method");
+      
+      if (method === "GiftCard") {
+        // Gift Card / Promo Coupon -> open the promo code modal
+        const modal = document.getElementById("promo-modal-overlay");
+        const input = document.getElementById("promo-code-input");
+        const errorMsg = document.getElementById("promo-error-msg");
+        if (modal && input && errorMsg) {
+          input.value = "";
+          errorMsg.style.display = "none";
+          modal.style.display = "flex";
+        }
+        return; // don't highlight as a payment radio selection
+      }
+      
+      selectPaymentMethod(method);
+    });
+  });
+
+  // Close promo modal button
+  const closePromoBtn = document.getElementById("btn-close-promo-modal");
+  if (closePromoBtn) {
+    closePromoBtn.onclick = () => {
+      document.getElementById("promo-modal-overlay").style.display = "none";
+    };
+  }
+
+  // Submit promo verification (from payment screen)
+  const submitPromoBtn = document.getElementById("btn-promo-apply-submit");
+  if (submitPromoBtn) {
+    submitPromoBtn.onclick = () => {
+      const input = document.getElementById("promo-code-input");
+      const errorMsg = document.getElementById("promo-error-msg");
+      const modal = document.getElementById("promo-modal-overlay");
+      
+      if (input.value.trim().toUpperCase() === "UDHAYA") {
+        modal.style.display = "none";
+        
+        // Add to orders
+        let itemsToOrder = [];
+        if (Store.checkoutSingleItem) {
+          itemsToOrder = [Store.checkoutSingleItem];
+        } else {
+          itemsToOrder = [...Store.cart];
+        }
+        const newOrderId = `NX-${Math.floor(1000 + Math.random() * 9000)}-2026`;
+        itemsToOrder.forEach(item => {
+          Store.orders.unshift({
+            id: newOrderId,
+            date: new Date().toISOString().split('T')[0],
+            productName: item.product.name,
+            image: item.product.image,
+            price: item.product.price * item.quantity,
+            status: "processing"
+          });
+        });
+        
+        Store.cart = [];
+        Store.checkoutSingleItem = null;
+        updateBadges();
+        saveUserToDatabase();
+        
+        // Show order success modal
+        document.getElementById("success-order-id").textContent = newOrderId;
+        const successModal = document.getElementById("success-modal-overlay");
+        successModal.style.display = "flex";
+        successModal.offsetHeight;
+        successModal.classList.add("active");
+      } else {
+        // Show inline error
+        errorMsg.style.display = "block";
+      }
+    };
+  }
+  
+  // Proceed to Pay
+  document.getElementById("btn-payment-proceed").addEventListener("click", () => {
+    // Show a micro-interaction skeleton loading effect on the button
+    const btn = document.getElementById("btn-payment-proceed");
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="skeleton" style="width: 100px; height: 16px; border-radius: 4px; display: inline-block;"></span>`;
+    btn.disabled = true;
+    
+    // Simulate transaction delay
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      
+      // Add items to Ordered List
+      let itemsToOrder = [];
+      if (Store.checkoutSingleItem) {
+        itemsToOrder = [Store.checkoutSingleItem];
+      } else {
+        itemsToOrder = [...Store.cart];
+      }
+      
+      const newOrderId = `NX-${Math.floor(1000 + Math.random() * 9000)}-2026`;
+      
+      itemsToOrder.forEach(item => {
+        Store.orders.unshift({
+          id: newOrderId,
+          date: new Date().toISOString().split('T')[0],
+          productName: item.product.name,
+          image: item.product.image,
+          price: item.product.price * item.quantity,
+          status: "processing"
+        });
+      });
+      
+      // Clear Cart if not checkout single item
+      if (!Store.checkoutSingleItem) {
+        Store.cart = [];
+        renderCartScreen();
+        updateBadges();
+      }
+      Store.checkoutSingleItem = null;
+      
+      // Open animated success dialog modal
+      document.getElementById("success-order-id").textContent = newOrderId;
+      const modal = document.getElementById("success-modal-overlay");
+      modal.style.display = "flex";
+      modal.offsetHeight; // trigger reflow
+      modal.classList.add("active");
+      
+    }, 1800);
+  });
+  
+  // Close success modal & go to My Orders
+  document.getElementById("btn-success-modal-close").addEventListener("click", () => {
+    const modal = document.getElementById("success-modal-overlay");
+    modal.classList.remove("active");
+    setTimeout(() => {
+      modal.style.display = "none";
+      renderOrdersList();
+      routeTo("screen-orders");
+    }, 200);
+  });
+}
+
+// ACCOUNT SCREEN TAB
+function renderAccountScreen() {
+  document.getElementById("account-avatar-char").textContent = Store.currentUser.name.charAt(0).toUpperCase();
+  document.getElementById("account-user-name").textContent = Store.currentUser.name;
+  document.getElementById("account-user-email").textContent = Store.currentUser.email;
+  document.getElementById("account-language-val").textContent = Store.currentUser.language;
+}
+
+function initAccountScreen() {
+  // Grid Menu buttons
+  document.getElementById("btn-acc-orders").addEventListener("click", () => {
+    renderOrdersList();
+    routeTo("screen-orders");
+  });
+  
+  document.getElementById("btn-acc-wishlist").addEventListener("click", () => {
+    // Show a list of wishlisted products
+    const wishlistIds = Array.from(Store.wishlist);
+    if (wishlistIds.length === 0) {
+      showToast("Your Wishlist is empty!", "error");
+      return;
+    }
+    
+    // Render wishlist products as a dynamic categories category
+    const wishlistProducts = PRODUCT_CATALOG.filter(p => wishlistIds.includes(p.id));
+    
+    // Switch to Categories View and load wishlisted items
+    document.querySelectorAll(".sidebar-tab").forEach(tab => tab.classList.remove("active"));
+    document.getElementById("category-content-title").textContent = "My Wishlist";
+    document.getElementById("category-product-grid").innerHTML = wishlistProducts.map(p => createProductCardHTML(p)).join('');
+    
+    attachProductCardEvents();
+    if (window.lucide) window.lucide.createIcons();
+    routeTo("screen-categories");
+  });
+  
+  document.getElementById("btn-acc-cart").addEventListener("click", () => {
+    renderCartScreen();
+    routeTo("screen-cart");
+  });
+  
+  document.getElementById("btn-acc-help").addEventListener("click", () => {
+    showToast("Contacting customer support helpline...");
+  });
+
+  // Settings click listeners
+  document.getElementById("btn-acc-edit-profile").addEventListener("click", () => {
+    // Fill edit profile form with current values
+    document.getElementById("edit-profile-name").value = Store.currentUser.name || "";
+    document.getElementById("edit-profile-email").value = Store.currentUser.email || "";
+    document.getElementById("edit-profile-phone").value = Store.currentUser.phone || "";
+    document.getElementById("edit-profile-language").value = Store.currentUser.language || "English";
+    document.getElementById("edit-profile-district").value = Store.currentUser.district || "";
+    document.getElementById("edit-profile-city").value = Store.currentUser.city || "";
+    document.getElementById("edit-profile-address").value = Store.currentUser.address || "";
+    routeTo("screen-edit-profile");
+  });
+  
+  document.getElementById("btn-acc-saved-address").addEventListener("click", () => {
+    openAddressManagementSheet();
+  });
+  
+  document.getElementById("btn-acc-language").addEventListener("click", () => {
+    openLanguageSelectionSheet();
+  });
+  
+  document.getElementById("btn-acc-logout").addEventListener("click", () => {
+    // Reset session states
+    localStorage.removeItem("nexcart_active_user");
+    Store.currentUser = {
+      name: "Anonymous User",
+      email: "user@nexcart.com",
+      phone: "+91 9876543210",
+      language: "English",
+      district: "New Delhi",
+      city: "Delhi",
+      address: "H.No 123, Block C, Connaught Place",
+      interests: ["Fashion", "Gadgets"]
+    };
+    Store.cart = [];
+    Store.wishlist.clear();
+    updateBadges();
+    showAlert("Logged Out", "You have been safely signed out.", "info", () => {
+      routeTo("screen-auth");
+    });
+  });
+}
+
+// ORDERS SUB-PAGE
+function renderOrdersList() {
+  const container = document.getElementById("orders-items-container");
+  
+  if (Store.orders.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 60px 20px; text-align: center; color: var(--text-secondary);">
+        <i data-lucide="package" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
+        <p style="font-weight: 600;">You haven't placed any orders yet.</p>
+      </div>
+    `;
+  } else {
+    container.innerHTML = Store.orders.map(order => {
+      const dateFormatted = new Date(order.date).toLocaleDateString("en-IN", {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+      const statusLabel = order.status === "delivered" ? "Delivered" : "Processing";
+      
+      return `
+        <div class="order-history-card">
+          <div class="order-card-header">
+            <span>Order ID: ${order.id} | Date: ${dateFormatted}</span>
+            <span class="order-status-chip ${order.status}">${statusLabel}</span>
+          </div>
+          
+          <div class="order-product-row">
+            <img src="${order.image}" alt="${order.productName}" class="order-product-img">
+            <div class="order-product-details">
+              <span class="order-product-name">${order.productName}</span>
+              <span class="order-product-price">₹${order.price.toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function initOrdersScreen() {
+  document.getElementById("btn-orders-back").addEventListener("click", () => {
+    routeTo("screen-account");
+  });
+}
+
+
+// --- 6. EVENT ATTACHMENTS & INTERACTION HANDLERS ---
+
+function toggleWishlist(productId, element) {
+  const isWish = Store.wishlist.has(productId);
+  
+  if (isWish) {
+    Store.wishlist.delete(productId);
+    showToast("Removed from Wishlist");
+    if (element) {
+      element.classList.remove("active");
+      if (element.id === "pdp-wishlist-btn") {
+        element.style.color = "var(--text-secondary)";
+        element.innerHTML = '<i data-lucide="heart"></i>';
+      }
+    }
+  } else {
+    Store.wishlist.add(productId);
+    showToast("Saved to Wishlist!");
+    if (element) {
+      element.classList.add("active");
+      if (element.id === "pdp-wishlist-btn") {
+        element.style.color = "var(--danger)";
+        element.innerHTML = '<i data-lucide="heart" style="fill: currentColor;"></i>';
+      }
+    }
+  }
+  
+  // Re-sync all wishlist icons on screens
+  document.querySelectorAll(`.wishlist-toggle-btn[data-product-id="${productId}"]`).forEach(btn => {
+    if (Store.wishlist.has(productId)) {
+      btn.classList.add("active");
+      btn.innerHTML = `<i data-lucide="heart" style="width: 16px; height: 16px; fill: currentColor;"></i>`;
+    } else {
+      btn.classList.remove("active");
+      btn.innerHTML = `<i data-lucide="heart" style="width: 16px; height: 16px;"></i>`;
+    }
+  });
+
+  updateBadges();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function attachProductCardEvents() {
+  // Product Detail opens when card is clicked (except wishlist or quick add buttons)
+  document.querySelectorAll(".product-card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      // Stop if click is inside wishlist toggle button or quick add cart button
+      if (e.target.closest(".wishlist-toggle-btn") || e.target.closest(".quick-add-btn")) return;
+      
+      const id = card.getAttribute("data-product-id");
+      openProductDetails(id);
+    });
+  });
+
+  // Product card wishlist buttons
+  document.querySelectorAll(".wishlist-toggle-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-product-id");
+      toggleWishlist(id, btn);
+    });
+  });
+
+  // Product card Quick Add buttons
+  document.querySelectorAll(".quick-add-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-product-id");
+      const product = PRODUCT_CATALOG.find(p => p.id === id);
+      
+      // Default sizes/colors for quick add if Fashion
+      const size = product.category === "Fashion" ? product.sizes[0] : "";
+      const color = product.category === "Fashion" ? product.colors[0].name : "";
+      
+      addToCart(product, 1, size, color);
+      showToast("Added to Cart!");
+      updateBadges();
+    });
+  });
+}
+
+// TOP LEVEL SPA STICKY NAV TABS
+function initNavigationTabs() {
+  document.querySelectorAll(".nav-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const targetTab = tab.getAttribute("data-tab");
+      
+      if (targetTab === "home") {
+        renderHomeScreen();
+        routeTo("screen-home");
+      } else if (targetTab === "categories") {
+        routeTo("screen-categories");
+      } else if (targetTab === "account") {
+        renderAccountScreen();
+        routeTo("screen-account");
+      } else if (targetTab === "cart") {
+        renderCartScreen();
+        routeTo("screen-cart");
+      }
+    });
+  });
+}
+
+// SEARCH FUNCTIONALITY
+function initSearch() {
+  const searchInput = document.getElementById("search-input");
+  
+  searchInput.addEventListener("input", (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    if (!query) {
+      // Restore default category view if cleared
+      const activeTabCat = document.querySelector(".sidebar-tab.active");
+      if (activeTabCat) {
+        showCategoryProducts(activeTabCat.getAttribute("data-cat"));
+      } else {
+        showCategoryProducts("Fashion");
+      }
+      return;
+    }
+    
+    // Switch to Categories View to show search results
+    routeTo("screen-categories");
+    
+    // Clear sidebar active states
+    document.querySelectorAll(".sidebar-tab").forEach(tab => tab.classList.remove("active"));
+    
+    const title = document.getElementById("category-content-title");
+    title.textContent = `Search results for "${query}"`;
+    
+    const matches = PRODUCT_CATALOG.filter(p => 
+      p.name.toLowerCase().includes(query) || 
+      p.description.toLowerCase().includes(query) ||
+      p.category.toLowerCase().includes(query)
+    );
+    
+    const gridContainer = document.getElementById("category-product-grid");
+    if (matches.length > 0) {
+      gridContainer.innerHTML = matches.map(p => createProductCardHTML(p)).join('');
+    } else {
+      gridContainer.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-secondary);">
+          <i data-lucide="search" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
+          <p style="font-weight: 600;">No products matched your search.</p>
+        </div>
+      `;
+    }
+    
+    attachProductCardEvents();
+    if (window.lucide) window.lucide.createIcons();
+  });
+}
+
+// HEADER & FLOATING HELPERS
+function renderNotificationsScreen() {
+  const container = document.getElementById("notifications-list-container");
+  if (!container) return;
+  
+  if (Store.notifications.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 60px 20px; text-align: center; color: var(--text-secondary);">
+        <i data-lucide="bell-off" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
+        <p style="font-weight: 600;">You have no new notifications.</p>
+      </div>
+    `;
+    const badge = document.getElementById("notification-badge");
+    if (badge) badge.style.display = "none";
+    return;
+  }
+  
+  container.innerHTML = Store.notifications.map(not => `
+    <div class="notification-card" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; display: flex; gap: 12px; box-shadow: var(--shadow-sm); position: relative; ${not.unread ? 'border-left: 3px solid var(--primary);' : ''}">
+      <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <i data-lucide="${not.icon}" style="width: 18px; height: 18px;"></i>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">${not.title}</span>
+          <span style="font-size: 10px; color: var(--text-light);">${not.time}</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">${not.content}</p>
+      </div>
+    </div>
+  `).join('');
+  
+  // Mark all notifications as read upon opening
+  Store.notifications.forEach(n => n.unread = false);
+  updateBadges();
+  
+  if (window.lucide) window.lucide.createIcons();
+}
+
+// --- 5.5 TRANSLATIONS & MULTI-LANGUAGE SYSTEM ---
+const TRANSLATIONS = {
+  English: {
+    home: "Home",
+    categories: "Categories",
+    account: "Account",
+    cart: "Cart",
+    search_placeholder: "Search products, brands and more...",
+    saved_addresses: "Saved Addresses",
+    select_language: "Select Language",
+    edit_profile: "Edit Profile",
+    logout: "Logout",
+    trending: "Trending Products",
+    suggestions: "Suggestions For You",
+    recently_watched: "Recently Watched",
+    explore: "Explore NexCart",
+    add_to_cart: "Add to Cart",
+    buy_now: "Buy Now",
+    product_highlights: "Product Highlights",
+    product_description: "Product Description",
+    related_products: "Related Products",
+    notifications: "Notifications",
+    clear_all: "Clear All"
+  },
+  Hindi: {
+    home: "होम",
+    categories: "श्रेणियाँ",
+    account: "खाता",
+    cart: "कार्ट",
+    search_placeholder: "उत्पाद, ब्रांड और बहुत कुछ खोजें...",
+    saved_addresses: "सहेजे गए पते",
+    select_language: "भाषा चुनें",
+    edit_profile: "प्रोफ़ाइल संपादित करें",
+    logout: "लॉग आउट",
+    trending: "ट्रेंडिंग उत्पाद",
+    suggestions: "आपके लिए सुझाव",
+    recently_watched: "हाल ही में देखे गए",
+    explore: "नेक्सकार्ट का अन्वेषण करें",
+    add_to_cart: "कार्ट में जोड़ें",
+    buy_now: "अभी खरीदें",
+    product_highlights: "उत्पाद की मुख्य विशेषताएं",
+    product_description: "उत्पाद का विवरण",
+    related_products: "संबंधित उत्पाद",
+    notifications: "सूचनाएं",
+    clear_all: "सभी साफ़ करें"
+  },
+  Malayalam: {
+    home: "ഹോം",
+    categories: "വിഭാഗങ്ങൾ",
+    account: "അക്കൗണ്ട്",
+    cart: "കാർട്ട്",
+    search_placeholder: "ഉൽപ്പന്നങ്ങൾ, ബ്രാൻഡുകൾ എന്നിവ തിരയുക...",
+    saved_addresses: "സംരക്ഷിച്ച വിലാസങ്ങൾ",
+    select_language: "ഭാഷ തിരഞ്ഞെടുക്കുക",
+    edit_profile: "പ്രൊഫൈൽ തിരുത്തുക",
+    logout: "ലോഗൗട്ട്",
+    trending: "ട്രെൻഡിംഗ് ഉൽപ്പന്നങ്ങൾ",
+    suggestions: "നിങ്ങൾക്കായി നിർദ്ദേശിക്കുന്നവ",
+    recently_watched: "അടുത്തിടെ കണ്ടവ",
+    explore: "നെക്സ്കാർട്ട് പര്യവേക്ഷണം ചെയ്യുക",
+    add_to_cart: "കാർട്ടിലേക്ക് ചേർക്കുക",
+    buy_now: "ഇപ്പോൾ വാങ്ങുക",
+    product_highlights: "ഉൽപ്പന്ന സവിശേഷതകൾ",
+    product_description: "ഉൽപ്പന്ന വിവരണം",
+    related_products: "ബന്ധപ്പെട്ട ഉൽപ്പന്നങ്ങൾ",
+    notifications: "അറിയിപ്പുകൾ",
+    clear_all: "എല്ലാം മായ്ക്കുക"
+  },
+  Japanese: {
+    home: "ホーム",
+    categories: "カテゴリ",
+    account: "アカウント",
+    cart: "カート",
+    search_placeholder: "製品やブランドを検索...",
+    saved_addresses: "保存された住所",
+    select_language: "言語の選択",
+    edit_profile: "プロフィール編集",
+    logout: "ログアウト",
+    trending: "トレンド商品",
+    suggestions: "あなたへのおすすめ",
+    recently_watched: "最近チェックした商品",
+    explore: "ネクスカートを探索",
+    add_to_cart: "カートに追加",
+    buy_now: "今すぐ購入",
+    product_highlights: "製品のハイライト",
+    product_description: "製品の説明",
+    related_products: "関連商品",
+    notifications: "通知",
+    clear_all: "すべてクリア"
+  },
+  Spanish: {
+    home: "Inicio",
+    categories: "Categorías",
+    account: "Cuenta",
+    cart: "Carrito",
+    search_placeholder: "Buscar productos, marcas...",
+    saved_addresses: "Direcciones Guardadas",
+    select_language: "Seleccionar Idioma",
+    edit_profile: "Editar Perfil",
+    logout: "Cerrar Sesión",
+    trending: "Productos de Tendencia",
+    suggestions: "Sugerencias Para Ti",
+    recently_watched: "Visto Recientemente",
+    explore: "Explorar NexCart",
+    add_to_cart: "Añadir al Carrito",
+    buy_now: "Comprar Ahora",
+    product_highlights: "Aspectos Destacados",
+    product_description: "Descripción del Producto",
+    related_products: "Productos Relacionados",
+    notifications: "Notificaciones",
+    clear_all: "Borrar Todo"
+  },
+  German: {
+    home: "Startseite",
+    categories: "Kategorien",
+    account: "Konto",
+    cart: "Warenkorb",
+    search_placeholder: "Produkte, Marken suchen...",
+    saved_addresses: "Gespeicherte Adressen",
+    select_language: "Sprache auswählen",
+    edit_profile: "Profil bearbeiten",
+    logout: "Abmelden",
+    trending: "Beliebte Produkte",
+    suggestions: "Empfehlungen für Sie",
+    recently_watched: "Zuletzt angesehen",
+    explore: "NexCart erkunden",
+    add_to_cart: "In den Warenkorb",
+    buy_now: "Jetzt kaufen",
+    product_highlights: "Produkt-Highlights",
+    product_description: "Produktbeschreibung",
+    related_products: "Ähnliche Produkte",
+    notifications: "Benachrichtigungen",
+    clear_all: "Alle löschen"
+  },
+  French: {
+    home: "Accueil",
+    categories: "Catégories",
+    account: "Compte",
+    cart: "Panier",
+    search_placeholder: "Rechercher des produits...",
+    saved_addresses: "Adresses Enregistrées",
+    select_language: "Choisir la Langue",
+    edit_profile: "Modifier le Profil",
+    logout: "Se déconnecter",
+    trending: "Produits Tendance",
+    suggestions: "Suggestions pour vous",
+    recently_watched: "Récemment consultés",
+    explore: "Explorer NexCart",
+    add_to_cart: "Ajouter au Panier",
+    buy_now: "Acheter Maintenant",
+    product_highlights: "Points Forts",
+    product_description: "Description du Produit",
+    related_products: "Produits Associés",
+    notifications: "Notifications",
+    clear_all: "Tout effacer"
+  }
+};
+
+function applyLanguageTranslations(lang) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.English;
+  
+  // Navigation Tabs text
+  const tabs = document.getElementById("app-bottom-nav");
+  if (tabs) {
+    const tabHomeSpan = tabs.querySelector('[data-tab="home"] span');
+    if (tabHomeSpan) tabHomeSpan.textContent = t.home;
+    const tabCatSpan = tabs.querySelector('[data-tab="categories"] span');
+    if (tabCatSpan) tabCatSpan.textContent = t.categories;
+    const tabAccSpan = tabs.querySelector('[data-tab="account"] span');
+    if (tabAccSpan) tabAccSpan.textContent = t.account;
+    const tabCartSpan = tabs.querySelector('[data-tab="cart"] span');
+    if (tabCartSpan) tabCartSpan.textContent = t.cart;
+  }
+  
+  // Search Placeholder
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) searchInput.placeholder = t.search_placeholder;
+  
+  // Home headers
+  const lblTrending = document.getElementById("lbl-home-trending");
+  if (lblTrending) lblTrending.textContent = t.trending;
+  const lblSuggestions = document.getElementById("lbl-home-suggestions");
+  if (lblSuggestions) lblSuggestions.textContent = t.suggestions;
+  const lblRecently = document.getElementById("lbl-home-recently");
+  if (lblRecently) lblRecently.textContent = t.recently_watched;
+  const lblExplore = document.getElementById("lbl-home-explore");
+  if (lblExplore) lblExplore.textContent = t.explore;
+  
+  // Account settings titles
+  const btnSavedAddresses = document.getElementById("btn-acc-saved-address");
+  if (btnSavedAddresses) btnSavedAddresses.querySelector("span").textContent = t.saved_addresses;
+  const btnLang = document.getElementById("btn-acc-language");
+  if (btnLang) btnLang.querySelector("span").textContent = t.select_language;
+  const btnEditProfile = document.getElementById("btn-acc-edit-profile");
+  if (btnEditProfile) btnEditProfile.querySelector("span").textContent = t.edit_profile;
+  const btnLogout = document.getElementById("btn-acc-logout");
+  if (btnLogout) btnLogout.querySelector("span").textContent = t.logout;
+
+  // Language sheet headers
+  const lblLangTitle = document.getElementById("lbl-language-sheet-title");
+  if (lblLangTitle) lblLangTitle.textContent = t.select_language;
+  const lblLangDesc = document.getElementById("lbl-language-sheet-desc");
+  if (lblLangDesc) lblLangDesc.textContent = lang === "English" ? "Choose your preferred language for the entire shopping experience." : `${t.select_language}`;
+  const lblLangBtn = document.getElementById("lbl-lang-apply-btn");
+  if (lblLangBtn) lblLangBtn.textContent = t.select_language;
+
+
+  // Edit profile form labels
+  const epTitle = document.getElementById("lbl-edit-profile-title");
+  if (epTitle) epTitle.textContent = t.edit_profile;
+  const epSubmit = document.getElementById("btn-ep-submit");
+  if (epSubmit) epSubmit.querySelector("span").textContent = t.edit_profile;
+}
+
+// --- 5.6 SAVED ADDRESS CRUD CONTROLLER ---
+let checkoutActiveAddress = null; // Track selected address for Order Summary checkout
+
+function openAddressManagementSheet(onSelectAddressCallback = null) {
+  const overlay = document.getElementById("address-sheet-overlay");
+  const body = document.getElementById("address-sheet-body");
+  if (!overlay || !body) return;
+
+  // Ensure user has addresses array in Store
+  if (!Store.currentUser.addresses || Store.currentUser.addresses.length === 0) {
+    Store.currentUser.addresses = [
+      {
+        id: "addr-1",
+        tag: "Home",
+        name: Store.currentUser.name,
+        street: Store.currentUser.address,
+        city: Store.currentUser.city || "Delhi",
+        district: Store.currentUser.district || "New Delhi",
+        phone: Store.currentUser.phone
+      }
+    ];
+  }
+
+  function renderAddressesList() {
+    body.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        ${Store.currentUser.addresses.map(addr => {
+          const isSelectedForCheckout = checkoutActiveAddress && checkoutActiveAddress.id === addr.id;
+          return `
+            <div class="address-item-card ${isSelectedForCheckout ? 'selected' : ''}" data-addr-id="${addr.id}">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="address-tag-badge">${addr.tag}</span>
+                ${isSelectedForCheckout ? '<span style="font-size: 11px; font-weight: 700; color: var(--primary);">Selected for delivery</span>' : ''}
+              </div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">${addr.name}</div>
+              <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">${addr.street}</div>
+              <div style="font-size: 12px; color: var(--text-light);">District: ${addr.district}, City: ${addr.city}</div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">Mobile: ${addr.phone}</div>
+              <div class="address-card-actions">
+                <button class="address-btn edit" data-edit-id="${addr.id}">
+                  <i data-lucide="edit-3" style="width: 13px;"></i>
+                  <span>Edit</span>
+                </button>
+                <button class="address-btn delete" data-delete-id="${addr.id}">
+                  <i data-lucide="trash-2" style="width: 13px;"></i>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+        
+        <button class="btn btn-secondary btn-sm" id="btn-add-new-address" style="width: 100%; border-style: dashed; margin-top: 8px;">
+          <i data-lucide="plus" style="width: 16px;"></i>
+          <span>Add New Address</span>
+        </button>
+      </div>
+    `;
+
+    // Click cards to select them for checkout
+    body.querySelectorAll(".address-item-card").forEach(card => {
+      card.addEventListener("click", (e) => {
+        // Skip clicking callback if action buttons are targeted
+        if (e.target.closest("button") || e.target.closest(".address-card-actions")) return;
+        const addrId = card.getAttribute("data-addr-id");
+        const selectedAddr = Store.currentUser.addresses.find(a => a.id === addrId);
+        if (selectedAddr) {
+          if (onSelectAddressCallback) {
+            onSelectAddressCallback(selectedAddr);
+            overlay.classList.remove("active");
+          }
+        }
+      });
+    });
+
+    // Edit button listeners
+    body.querySelectorAll("[data-edit-id]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit-id");
+        const addr = Store.currentUser.addresses.find(a => a.id === id);
+        if (addr) renderAddressForm(addr);
+      });
+    });
+
+    // Delete button listeners
+    body.querySelectorAll("[data-delete-id]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-delete-id");
+        if (Store.currentUser.addresses.length <= 1) {
+          showAlert("Error", "You must keep at least one saved address.", "error");
+          return;
+        }
+        Store.currentUser.addresses = Store.currentUser.addresses.filter(a => a.id !== id);
+        
+        // If we deleted the active checkout address, re-bind it to default
+        if (checkoutActiveAddress && checkoutActiveAddress.id === id) {
+          checkoutActiveAddress = Store.currentUser.addresses[0];
+        }
+
+        saveUserToDatabase();
+        renderAddressesList();
+        showAlert("Success", "Address deleted successfully.", "success");
+      });
+    });
+
+    // Add New button listener
+    document.getElementById("btn-add-new-address").addEventListener("click", () => {
+      renderAddressForm();
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function renderAddressForm(existingAddress = null) {
+    const isEditing = !!existingAddress;
+    body.innerHTML = `
+      <form id="form-sheet-address" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4 style="font-size: 14px; font-weight: 800;">${isEditing ? 'Edit Address' : 'Add New Address'}</h4>
+          <button type="button" class="btn btn-sm" id="btn-back-to-addresses" style="width: auto; padding: 4px 8px; color: var(--primary);">
+            Cancel
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Address Tag (e.g. Home, Work, Office)</label>
+          <input type="text" id="sheet-addr-tag" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.tag : 'Home'}">
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Contact Person Name</label>
+          <input type="text" id="sheet-addr-name" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.name : Store.currentUser.name}">
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Street Address details</label>
+          <textarea id="sheet-addr-street" class="form-input" style="min-height: 50px; padding: 8px;" required>${isEditing ? existingAddress.street : ''}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">District</label>
+            <input type="text" id="sheet-addr-district" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.district : ''}">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">City</label>
+            <input type="text" id="sheet-addr-city" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.city : ''}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Contact Mobile Number</label>
+          <input type="tel" id="sheet-addr-phone" class="form-input" style="height: 38px;" required value="${isEditing ? existingAddress.phone : Store.currentUser.phone}">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; margin-top: 8px;">
+          <span>${isEditing ? 'Save Address' : 'Add Address'}</span>
+          <i data-lucide="check" style="width: 16px;"></i>
+        </button>
+      </form>
+    `;
+
+    document.getElementById("btn-back-to-addresses").addEventListener("click", () => {
+      renderAddressesList();
+    });
+
+    document.getElementById("form-sheet-address").addEventListener("submit", (e) => {
+      e.preventDefault();
+      
+      const tag = document.getElementById("sheet-addr-tag").value.trim();
+      const name = document.getElementById("sheet-addr-name").value.trim();
+      const street = document.getElementById("sheet-addr-street").value.trim();
+      const district = document.getElementById("sheet-addr-district").value.trim();
+      const city = document.getElementById("sheet-addr-city").value.trim();
+      const phone = document.getElementById("sheet-addr-phone").value.trim();
+
+      if (isEditing) {
+        existingAddress.tag = tag;
+        existingAddress.name = name;
+        existingAddress.street = street;
+        existingAddress.district = district;
+        existingAddress.city = city;
+        existingAddress.phone = phone;
+        
+        if (checkoutActiveAddress && checkoutActiveAddress.id === existingAddress.id) {
+          checkoutActiveAddress = existingAddress;
+        }
+      } else {
+        const newAddr = {
+          id: "addr-" + Date.now(),
+          tag,
+          name,
+          street,
+          district,
+          city,
+          phone
+        };
+        Store.currentUser.addresses.push(newAddr);
+        if (!checkoutActiveAddress) checkoutActiveAddress = newAddr;
+      }
+
+      saveUserToDatabase();
+      renderAddressesList();
+      showAlert("Success", isEditing ? "Address updated successfully!" : "New Address added successfully!", "success");
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  document.getElementById("btn-close-address-sheet").onclick = () => {
+    overlay.classList.remove("active");
+  };
+
+  renderAddressesList();
+  overlay.classList.add("active");
+}
+
+
+
+// --- 5.7 LANGUAGE MODAL DROPDOWN SHEET CONTROLLER ---
+function openLanguageSelectionSheet() {
+  const overlay = document.getElementById("language-dialog-overlay");
+  const activeLabel = document.getElementById("lang-active-label");
+  const menu = document.getElementById("lang-dropdown-menu");
+  const applyBtn = document.getElementById("btn-language-apply-changes");
+  
+  if (!overlay || !activeLabel || !menu) return;
+
+  const languages = [
+    { code: "English", native: "English" },
+    { code: "Hindi", native: "Hindi (हिन्दी)" },
+    { code: "Malayalam", native: "Malayalam (മലയാളം)" },
+    { code: "Japanese", native: "Japanese (日本語)" },
+    { code: "Spanish", native: "Spanish (Español)" },
+    { code: "German", native: "German (Deutsch)" },
+    { code: "French", native: "French (Français)" }
+  ];
+
+  let selectedLang = Store.currentUser.language || "English";
+  activeLabel.textContent = selectedLang;
+
+  menu.innerHTML = languages.map(lang => `
+    <div class="lang-option-item ${lang.code === selectedLang ? 'selected' : ''}" data-lang-code="${lang.code}">
+      <span>${lang.native}</span>
+      ${lang.code === selectedLang ? '<i data-lucide="check" style="width: 14px; color: var(--primary);"></i>' : ''}
+    </div>
+  `).join('');
+
+  const selectBox = document.getElementById("lang-active-box");
+  selectBox.onclick = (e) => {
+    e.stopPropagation();
+    menu.classList.toggle("open");
+  };
+
+  menu.querySelectorAll("[data-lang-code]").forEach(item => {
+    item.addEventListener("click", () => {
+      selectedLang = item.getAttribute("data-lang-code");
+      activeLabel.textContent = selectedLang;
+      
+      menu.querySelectorAll(".lang-option-item").forEach(i => i.classList.remove("selected"));
+      item.classList.add("selected");
+      
+      menu.classList.remove("open");
+      
+      menu.innerHTML = languages.map(lang => `
+        <div class="lang-option-item ${lang.code === selectedLang ? 'selected' : ''}" data-lang-code="${lang.code}">
+          <span>${lang.native}</span>
+          ${lang.code === selectedLang ? '<i data-lucide="check" style="width: 14px; color: var(--primary);"></i>' : ''}
+        </div>
+      `).join('');
+      if (window.lucide) window.lucide.createIcons();
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".lang-dropdown-wrapper")) {
+      menu.classList.remove("open");
+    }
+  });
+
+  applyBtn.onclick = () => {
+    Store.currentUser.language = selectedLang;
+    saveUserToDatabase();
+    
+    applyLanguageTranslations(selectedLang);
+    
+    renderAccountScreen();
+    overlay.style.display = "none";
+    showAlert("Success", "Language changed successfully!", "success");
+  };
+
+  document.getElementById("btn-close-language-dialog").onclick = () => {
+    overlay.style.display = "none";
+  };
+
+  if (window.lucide) window.lucide.createIcons();
+  overlay.style.display = "flex";
+}
+
+// --- 5.8 EDIT PROFILE VIEW SCREEN FLOW ---
+function initEditProfileScreen() {
+  const backBtn = document.getElementById("btn-edit-profile-back");
+  const form = document.getElementById("form-edit-profile");
+  
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      routeTo("screen-account");
+    });
+  }
+
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById("edit-profile-name").value.trim();
+      const phone = document.getElementById("edit-profile-phone").value.trim();
+      const language = document.getElementById("edit-profile-language").value;
+      const district = document.getElementById("edit-profile-district").value.trim();
+      const city = document.getElementById("edit-profile-city").value.trim();
+      const address = document.getElementById("edit-profile-address").value.trim();
+
+      // Save user details
+      Store.currentUser.name = name;
+      Store.currentUser.phone = phone;
+      Store.currentUser.language = language;
+      Store.currentUser.district = district;
+      Store.currentUser.city = city;
+      Store.currentUser.address = address;
+
+      // Update address list defaults
+      if (Store.currentUser.addresses && Store.currentUser.addresses.length > 0) {
+        Store.currentUser.addresses[0].name = name;
+        Store.currentUser.addresses[0].street = address;
+        Store.currentUser.addresses[0].phone = phone;
+        Store.currentUser.addresses[0].district = district;
+        Store.currentUser.addresses[0].city = city;
+      }
+
+      saveUserToDatabase();
+      applyLanguageTranslations(language);
+      renderAccountScreen();
+      
+      showAlert("Profile Updated", "Your profile details have been saved successfully.", "success", () => {
+        routeTo("screen-account");
+      });
+    });
+  }
+}
+
+function initHeaderAndFAB() {
+  // Wishlist Header Button -> Switches to Categories tab displaying wishlist
+  document.getElementById("header-wishlist-btn").addEventListener("click", () => {
+    const wishlistIds = Array.from(Store.wishlist);
+    if (wishlistIds.length === 0) {
+      showAlert("Wishlist Empty", "Your Wishlist is empty!", "warning");
+      return;
+    }
+    const wishlistProducts = PRODUCT_CATALOG.filter(p => wishlistIds.includes(p.id));
+    
+    document.querySelectorAll(".sidebar-tab").forEach(tab => tab.classList.remove("active"));
+    document.getElementById("category-content-title").textContent = "My Wishlist";
+    document.getElementById("category-product-grid").innerHTML = wishlistProducts.map(p => createProductCardHTML(p)).join('');
+    
+    attachProductCardEvents();
+    if (window.lucide) window.lucide.createIcons();
+    routeTo("screen-categories");
+  });
+
+  // Header Cart Icon Button
+  document.getElementById("header-cart-btn").addEventListener("click", () => {
+    renderCartScreen();
+    routeTo("screen-cart");
+  });
+
+  // Header Notifications Icon Button
+  document.getElementById("header-notification-btn").addEventListener("click", () => {
+    renderNotificationsScreen();
+    routeTo("screen-notifications");
+  });
+
+  // Notifications Page Actions
+  document.getElementById("btn-notifications-back").addEventListener("click", () => {
+    if (Store.activeTab === "categories") {
+      routeTo("screen-categories");
+    } else if (Store.activeTab === "account") {
+      routeTo("screen-account");
+    } else if (Store.activeTab === "cart") {
+      routeTo("screen-cart");
+    } else {
+      routeTo("screen-home");
+    }
+  });
+
+  document.getElementById("btn-notifications-clear-all").addEventListener("click", () => {
+    Store.notifications = [];
+    renderNotificationsScreen();
+    updateBadges();
+    showAlert("Notifications Cleared", "All notifications have been cleared successfully.", "success");
+  });
+  
+  // FAB customer support simulation
+  document.getElementById("fab-support-btn").addEventListener("click", () => {
+    showAlert("Customer Support", "Opening Live chat support ticket... Connecting agent.", "info");
+  });
+}
+
+
+// --- 7. LIFE-CYCLE CONSTRUCTOR ON LOAD ---
+window.addEventListener("DOMContentLoaded", () => {
+  console.log("NexCart SPA Engine Initializing...");
+  
+  // Seed default recently watched from PRODUCT_CATALOG (data loaded before app.js)
+  seedRecentlyWatched();
+  
+  // Initialize Database
+  initUserDatabase();
+  
+  // Bind all dynamic modules
+  initAuth();
+  initOnboarding();
+  initInterests();
+  initCategories();
+  initPDP();
+  initCart();
+  initCheckoutScreen();
+  initPaymentScreen();
+  initAccountScreen();
+  initOrdersScreen();
+  initEditProfileScreen(); // Edit Profile Initializer
+  
+  initNavigationTabs();
+  initSearch();
+  initHeaderAndFAB();
+  
+  // Set badges initially
+  updateBadges();
+  
+  // Check active user session
+  const activeEmail = localStorage.getItem("nexcart_active_user");
+  if (activeEmail) {
+    const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
+    const user = users[activeEmail];
+    if (user) {
+      Store.currentUser = user;
+      
+      // Ensure addresses exist
+      if (!Store.currentUser.addresses || Store.currentUser.addresses.length === 0) {
+        Store.currentUser.addresses = [
+          {
+            id: "addr-1",
+            tag: "Home",
+            name: Store.currentUser.name || "User",
+            street: Store.currentUser.address || "",
+            city: Store.currentUser.city || "Delhi",
+            district: Store.currentUser.district || "New Delhi",
+            phone: Store.currentUser.phone || ""
+          }
+        ];
+        saveUserToDatabase();
+      }
+
+      // Apply language translation
+      applyLanguageTranslations(user.language || "English");
+      
+      if (!user.completedDetails) {
+        document.getElementById("onboard-name").value = user.name || "";
+        document.getElementById("onboard-email").value = user.email || "";
+        document.getElementById("onboard-address").value = user.address || "";
+        routeTo("screen-onboarding");
+      } else if (!user.completedInterests) {
+        renderInterestsGrid();
+        routeTo("screen-interests");
+      } else {
+        renderHomeScreen();
+        routeTo("screen-home");
+      }
+      return;
+    }
+  }
+  
+  // Apply default English translation if no active user session
+  applyLanguageTranslations("English");
+  
+  // Route to auth screen if no active session
+  routeTo("screen-auth");
+});

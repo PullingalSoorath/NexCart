@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NexCart - Premium E-commerce SPA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- Root SPA Container -->
+  <div id="app-container">
+
+    <!-- Sticky Top Header (Only shown on shopping tabs: Home, Categories, Account, Cart) -->
+    <header class="sticky-header" id="app-header" style="display: none;">
+      <div class="header-top">
+        <div class="brand-logo">
+          <i data-lucide="shopping-bag" style="stroke-width: 2.5px; stroke: var(--primary);"></i>
+          <span>NexCart</span>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" id="header-wishlist-btn" title="View Wishlist">
+            <i data-lucide="heart"></i>
+            <span class="badge" id="wishlist-badge" style="display: none;">0</span>
+          </button>
+          <button class="icon-btn" id="header-cart-btn" title="View Cart">
+            <i data-lucide="shopping-cart"></i>
+            <span class="badge" id="header-cart-badge" style="display: none;">0</span>
+          </button>
+          <button class="icon-btn" id="header-notification-btn" title="Notifications">
+            <i data-lucide="bell"></i>
+            <span class="badge" id="notification-badge">3</span>
+          </button>
+        </div>
+      </div>
+      <!-- Sticky Search Bar -->
+      <div class="search-container">
+        <i data-lucide="search" style="color: var(--text-light); width: 18px;"></i>
+        <input type="text" id="search-input" class="search-input" placeholder="Search products, brands and more...">
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="main-content-scroll">
+
+      <!-- 1. AUTHENTICATION SCREEN -->
+      <div id="screen-auth" class="screen-view active">
+        <div class="auth-container">
+          <div class="auth-header">
+            <div class="auth-logo">NexCart</div>
+            <div class="auth-subtitle">Discover premium items curated just for you.</div>
+          </div>
+
+          <div class="auth-card">
+            <div class="auth-tabs">
+              <button class="auth-tab-btn active" id="btn-tab-login">Sign In</button>
+              <button class="auth-tab-btn" id="btn-tab-register">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="form-login" class="auth-form-panel active" onsubmit="return false;">
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" id="login-email" class="form-input" placeholder="alex@example.com" required
+                  value="user@nexcart.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Password</label>
+                <div class="password-wrapper">
+                  <input type="password" id="login-password" class="form-input" placeholder="••••••••" required
+                    value="password123">
+                  <button type="button" class="password-toggle-btn" id="login-password-toggle"
+                    title="Show/Hide Password">
+                    <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                <span>Sign In</span>
+                <i data-lucide="arrow-right" style="width: 16px;"></i>
+              </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="form-register" class="auth-form-panel" onsubmit="return false;">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="register-name" class="form-input" placeholder="Alex Morgan" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" id="register-email" class="form-input" placeholder="alex@example.com" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Delivery Address</label>
+                <textarea id="register-address" class="form-input" placeholder="H.No 123, Block C, Connaught Place"
+                  style="resize: none; height: 80px;" required></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Password</label>
+                <div class="password-wrapper">
+                  <input type="password" id="register-password" class="form-input" placeholder="Min. 8 characters"
+                    required>
+                  <button type="button" class="password-toggle-btn" id="register-password-toggle"
+                    title="Show/Hide Password">
+                    <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                <span>Create Account</span>
+                <i data-lucide="user-plus" style="width: 16px;"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. USER ONBOARDING SCREEN -->
+      <div id="screen-onboarding" class="screen-view">
+        <div class="onboarding-container">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h2 class="view-title" style="font-size: 26px;">Complete Profile</h2>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Provide your details to enable
+              quick shipping and custom alerts.</p>
+          </div>
+
+          <div class="auth-card">
+            <form id="form-onboarding" onsubmit="return false;"
+              style="display: flex; flex-direction: column; gap: 16px;">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="onboard-name" class="form-input" placeholder="Alex Morgan" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" id="onboard-email" class="form-input" placeholder="alex@example.com" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="tel" id="onboard-phone" class="form-input" placeholder="+91 9876543210" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Preferred Language</label>
+                <select id="onboard-lang" class="form-input" style="background-image: none;">
+                  <option value="English">English</option>
+                  <option value="Hindi">हिन्दी (Hindi)</option>
+                  <option value="Spanish">Español (Spanish)</option>
+                  <option value="German">Deutsch (German)</option>
+                </select>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label class="form-label">District</label>
+                  <input type="text" id="onboard-district" class="form-input" placeholder="New Delhi" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">City</label>
+                  <input type="text" id="onboard-city" class="form-input" placeholder="Delhi" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Street Address</label>
+                <textarea id="onboard-address" class="form-input" placeholder="H.No 123, Block C, Connaught Place"
+                  style="resize: none; height: 80px;" required></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                <span>Save & Continue</span>
+                <i data-lucide="arrow-right" style="width: 16px;"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. INTEREST SELECTION SCREEN -->
+      <div id="screen-interests" class="screen-view">
+        <div class="view-header" style="flex-direction: column; align-items: center; text-align: center; gap: 8px;">
+          <h2 class="view-title">Choose Your Interests</h2>
+          <p style="color: var(--text-secondary); font-size: 13px; max-width: 80%;">Select one or more topics to
+            customize your shopping feed.</p>
+        </div>
+
+        <div class="interest-grid" id="interest-chips-container">
+          <!-- Populated by app.js -->
+        </div>
+
+        <div class="interest-footer">
+          <button class="btn btn-primary" id="btn-interests-continue">
+            <span>Continue to Home</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4. TAB 1: HOME SCREEN -->
+      <div id="screen-home" class="screen-view">
+        <!-- Advertisements Carousel -->
+        <div class="home-section hero-carousel-container">
+          <div class="hero-carousel" id="home-carousel">
+            <!-- Slides dynamically populated by app.js -->
+            <div class="carousel-indicators" id="carousel-indicators"></div>
+          </div>
+        </div>
+
+        <!-- Trending Products Section -->
+        <div class="home-section">
+          <div class="section-header">
+            <h3 class="section-title">Trending Products</h3>
+            <a href="#" class="section-link" data-target-category="Trending">See All</a>
+          </div>
+          <div class="product-grid" id="row-trending">
+            <!-- Dynamic product cards -->
+          </div>
+        </div>
+
+        <!-- Suggestions For You Section -->
+        <div class="home-section" id="suggestions-section" style="display: none;">
+          <div class="section-header">
+            <h3 class="section-title">Suggestions For You</h3>
+            <span
+              style="font-size: 10px; font-weight: 700; color: var(--accent); background: var(--accent-light); padding: 2px 8px; border-radius: var(--radius-full); text-transform: uppercase;">Based
+              on Interests</span>
+          </div>
+          <div class="product-grid" id="row-suggestions">
+            <!-- Dynamic suggestion cards -->
+          </div>
+        </div>
+
+        <!-- Recently Watched Section -->
+        <div class="home-section" id="recently-watched-section" style="display: none;">
+          <div class="section-header">
+            <h3 class="section-title">Recently Viewed</h3>
+          </div>
+          <div class="product-grid" id="row-recently-watched">
+            <!-- Dynamic cards -->
+          </div>
+        </div>
+
+        <!-- Explore Catalog Section (Grid View) -->
+        <div class="home-section">
+          <div class="section-header">
+            <h3 class="section-title">Explore NexCart</h3>
+          </div>
+          <div class="product-grid" id="home-product-grid">
+            <!-- Dynamic product cards in grid layout populated by app.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. TAB 2: CATEGORIES SCREEN -->
+      <div id="screen-categories" class="screen-view">
+        <div class="categories-layout">
+          <!-- Left Sticky Sidebar -->
+          <aside class="sidebar-categories" id="categories-sidebar">
+            <!-- Populated by app.js -->
+          </aside>
+
+          <!-- Right Grid Main Area -->
+          <section class="category-main-content">
+            <div class="category-header" id="category-content-title">Fashion</div>
+            <div class="product-grid" id="category-product-grid">
+              <!-- Grid cards populated by app.js -->
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 6. PRODUCT DETAILS PAGE (PDP) -->
+      <div id="screen-pdp" class="screen-view"
+        style="padding-bottom: 0; display: none; flex-direction: column; overflow: hidden; height: 100%;">
+        <div class="pdp-navbar"
+          style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border-color); background-color: var(--bg-primary);">
+          <button class="pdp-back-btn icon-btn" id="btn-pdp-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <div class="pdp-title-nav" id="pdp-nav-title" style="font-weight: 800; font-size: 16px;">Product Details</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="icon-btn" id="pdp-wishlist-btn" title="Add to Wishlist">
+              <i data-lucide="heart"></i>
+            </button>
+            <button class="icon-btn" id="pdp-header-cart-btn" title="View Cart">
+              <i data-lucide="shopping-cart"></i>
+              <span class="badge" id="pdp-header-cart-badge" style="display: none;">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Middle Section -->
+        <div class="pdp-scrollable-content"
+          style="flex: 1; overflow-y: auto; padding-bottom: 80px; background-color: var(--bg-primary);">
+
+          <!-- Three Column Upper Section -->
+          <div class="pdp-three-column-container">
+
+            <!-- Column 1: Interactive Image Gallery -->
+            <div class="pdp-col-gallery">
+              <div class="pdp-gallery-inner">
+                <!-- Vertical Thumbnails list on left -->
+                <div class="pdp-thumbnails-strip" id="pdp-vertical-thumbnails">
+                  <!-- Populated dynamically -->
+                </div>
+                <!-- Large active image in middle -->
+                <div class="pdp-large-image-viewer" id="pdp-main-image-trigger">
+                  <img src="" alt="" id="pdp-main-gallery-image"
+                    style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Column 2: Product Info -->
+            <div class="pdp-col-info">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <a href="#" class="store-link" style="font-size: 13px; font-weight: 600; color: var(--primary);">Visit
+                  the NexCart Store</a>
+                <div id="pdp-warranty-tag-container"
+                  style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--accent-hover); background-color: var(--accent-light); padding: 4px 10px; border-radius: var(--radius-full);">
+                  <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                  <span id="pdp-warranty-text">1 Year Warranty</span>
+                </div>
+              </div>
+
+              <h2 class="pdp-name" id="pdp-name-label"
+                style="font-size: 22px; font-weight: 800; line-height: 1.3; margin-top: 8px;">Super Premium Smart Phone
+              </h2>
+
+              <div class="pdp-rating-row" style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                <div id="pdp-stars-container" style="display: flex; color: var(--warning); gap: 2px;">
+                  <!-- Stars populated dynamically -->
+                </div>
+                <span class="pdp-reviews-count" id="pdp-reviews-label"
+                  style="font-size: 12px; color: var(--text-light); font-weight: 600;">2,410 ratings</span>
+              </div>
+
+              <!-- Price & Strikethrough -->
+              <div class="pdp-price-block"
+                style="margin-top: 14px; padding: 12px 0; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: baseline; gap: 12px;">
+                  <span class="pdp-price-current" id="pdp-price-current-label"
+                    style="font-size: 24px; font-weight: 800;">₹54,999</span>
+                  <span class="pdp-price-mrp" id="pdp-price-mrp-label"
+                    style="text-decoration: line-through; color: var(--text-light); font-size: 14px;">₹59,999</span>
+                  <span class="pdp-discount-pill" id="pdp-discount-label"
+                    style="color: var(--danger); font-weight: 800; font-size: 14px;">12% OFF</span>
+                </div>
+              </div>
+
+              <!-- Offers grid cards -->
+              <div class="offers-container" style="margin-top: 10px;">
+                <h4 style="font-size: 13px; font-weight: 800; margin-bottom: 8px;">Available Offers</h4>
+                <div class="offers-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                  <div class="offer-card"
+                    style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-sm); background-color: var(--bg-secondary);">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-primary);">Bank Offer</div>
+                    <p style="font-size: 10px; color: var(--text-secondary); line-height: 1.3; margin-top: 4px;">Upto
+                      ₹1,500 discount on select Credit Cards</p>
+                  </div>
+                  <div class="offer-card"
+                    style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-sm); background-color: var(--bg-secondary);">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-primary);">Partner Offer</div>
+                    <p style="font-size: 10px; color: var(--text-secondary); line-height: 1.3; margin-top: 4px;">Get 3%
+                      Cashback on UPI transaction</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Variations selectors -->
+              <div id="pdp-conditional-attributes-container" style="margin-top: 14px;">
+                <!-- dynamic variant choices chips -->
+              </div>
+
+              <!-- Key highlights list -->
+              <div id="pdp-highlights-section"
+                style="display: none; flex-direction: column; gap: 6px; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+                <h4 style="font-size: 13px; font-weight: 800;">Product Highlights</h4>
+                <ul id="pdp-highlights-list"
+                  style="margin-left: 20px; font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; line-height: 1.4; list-style-type: disc;">
+                  <!-- points -->
+                </ul>
+              </div>
+
+              <!-- Product Description -->
+              <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+                <h4 style="font-size: 13px; font-weight: 800; margin-bottom: 6px;">Product Description</h4>
+                <p class="pdp-description-text" id="pdp-desc-text"
+                  style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;"></p>
+              </div>
+            </div>
+
+            <!-- Column 3: Sticky Checkout Card -->
+            <div class="pdp-col-checkout">
+              <div class="checkout-sticky-panel">
+                <div style="font-size: 20px; font-weight: 800; color: var(--text-primary);"
+                  id="pdp-checkout-panel-price">₹54,999</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
+                  <span>FREE delivery </span><strong style="color: var(--text-primary);"
+                    id="pdp-checkout-deliv-date">Monday, 6 July</strong>
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--accent-hover); margin-top: 10px;">In stock
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px;">
+                  <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">Quantity:</span>
+                  <select id="pdp-qty-select"
+                    style="border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 10px; font-weight: 700; font-size: 12px; background-color: var(--bg-primary); color: var(--text-primary);">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
+                  <!-- Yellow add to cart -->
+                  <button class="btn" id="btn-pdp-right-add-cart"
+                    style="background-color: #ffd814; color: #0f1111; font-weight: 700; border-radius: 20px; font-size: 13px; padding: 10px 20px; border: 1px solid #fcd200;">
+                    Add to Cart
+                  </button>
+                  <!-- Orange buy now -->
+                  <button class="btn" id="btn-pdp-right-buy-now"
+                    style="background-color: #ffa41c; color: #0f1111; font-weight: 700; border-radius: 20px; font-size: 13px; padding: 10px 20px; border: 1px solid #ff9900;">
+                    Buy Now
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+          </div> <!-- Three column container end -->
+
+          <!-- Browsing History Carousel (Full-width section at bottom) -->
+          <div class="browsing-history-section"
+            style="border-top: 1px solid var(--border-color); padding: 24px 20px; margin-top: 24px; background-color: var(--bg-primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <div style="display: flex; align-items: baseline; gap: 10px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin: 0;">Your browsing
+                  history</h3>
+                <a href="#" style="font-size: 11px; font-weight: 600; color: var(--primary);">View or edit your browsing
+                  history</a>
+              </div>
+              <div style="font-size: 11px; color: var(--text-light); font-weight: 700;" id="browsing-history-pages-lbl">
+                Page 1 of 3</div>
+            </div>
+
+            <div style="position: relative; display: flex; align-items: center;">
+              <!-- Left arrow -->
+              <button class="history-carousel-arrow left icon-btn" id="btn-history-scroll-left"
+                style="position: absolute; left: -10px; z-index: 10; background: white; border: 1px solid var(--border-color); border-radius: 50%; width: 36px; height: 36px; box-shadow: var(--shadow-md);">
+                <i data-lucide="chevron-left" style="width: 18px; color: var(--text-primary);"></i>
+              </button>
+
+              <!-- Carousel strip track -->
+              <div class="history-carousel-track-wrapper" style="overflow: hidden; flex: 1; padding: 4px;">
+                <div class="history-carousel-track" id="history-carousel-slider-track"
+                  style="display: flex; gap: 12px; transition: transform 0.4s ease;">
+                  <!-- populated with 10-15 product cards -->
+                </div>
+              </div>
+
+              <!-- Right arrow -->
+              <button class="history-carousel-arrow right icon-btn" id="btn-history-scroll-right"
+                style="position: absolute; right: -10px; z-index: 10; background: white; border: 1px solid var(--border-color); border-radius: 50%; width: 36px; height: 36px; box-shadow: var(--shadow-md);">
+                <i data-lucide="chevron-right" style="width: 18px; color: var(--text-primary);"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Related Products Section (Full-width section at bottom) -->
+          <div id="pdp-related-products-section"
+            style="display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border-color); padding: 24px 20px; background-color: var(--bg-primary);">
+            <h4 style="font-size: 14px; font-weight: 800;">Related Products</h4>
+            <div class="product-grid" id="pdp-related-products-grid" style="padding: 0;">
+              <!-- Grid views of related products -->
+            </div>
+          </div>
+
+        </div> <!-- Scrollable middle section end -->
+
+      </div>
+
+      <!-- 7. ORDER SUMMARY / CHECKOUT -->
+      <div id="screen-checkout" class="screen-view">
+        <div class="view-header">
+          <button class="icon-btn pdp-back-btn" id="btn-checkout-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <h2 class="view-title" style="font-size: 20px;">Order Summary</h2>
+          <div style="width: 36px;"></div> <!-- Spacer -->
+        </div>
+
+        <div class="checkout-container">
+          <!-- Shipping Address Display -->
+          <div class="checkout-section-card">
+            <div class="checkout-card-title"
+              style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="map-pin" style="width: 18px; color: var(--primary);"></i>
+                <span id="lbl-checkout-deliv-address">Delivery Address</span>
+              </div>
+              <button id="btn-checkout-change-address"
+                style="font-size: 11px; font-weight: 700; color: var(--primary); cursor: pointer; border: none; background: none;">
+                Change/Add Address
+              </button>
+            </div>
+            <div class="address-display-box" id="checkout-address-box">
+              <!-- Filled by active profile -->
+            </div>
+          </div>
+
+          <!-- Cart Items Preview -->
+          <div class="checkout-section-card">
+            <div class="checkout-card-title">
+              <i data-lucide="shopping-bag" style="width: 18px; color: var(--primary);"></i>
+              <span>Review Items</span>
+            </div>
+            <div id="checkout-items-preview-list" style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- Dynamic item rows with quantity selectors -->
+            </div>
+          </div>
+
+          <!-- Price Details Card -->
+          <div class="checkout-section-card">
+            <div class="checkout-card-title">
+              <i data-lucide="receipt" style="width: 18px; color: var(--primary);"></i>
+              <span>Price Details</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="price-breakdown-row">
+                <span>Price (<span id="checkout-total-items-qty">1</span> items)</span>
+                <span id="checkout-mrp-total">₹0</span>
+              </div>
+              <div class="price-breakdown-row green">
+                <span>Discount</span>
+                <span id="checkout-discount-total">-₹0</span>
+              </div>
+              <div class="price-breakdown-row green">
+                <span>Delivery Charges</span>
+                <span>FREE</span>
+              </div>
+              <div class="price-breakdown-row total">
+                <span>Total Amount</span>
+                <span id="checkout-final-amount">₹0</span>
+              </div>
+              <div
+                style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);"
+                  id="lbl-checkout-promo">Promo Code</span>
+                <button id="btn-checkout-apply-promo"
+                  style="font-size: 12px; font-weight: 800; color: var(--primary); cursor: pointer; border: none; background: none;">
+                  Apply Promo Code
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="btn-checkout-continue" style="margin-top: 12px;">
+            <span>Continue to Payment</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 8. PAYMENT GATEWAY UI -->
+      <div id="screen-payment" class="screen-view">
+        <div class="view-header">
+          <button class="icon-btn pdp-back-btn" id="btn-payment-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <h2 class="view-title" style="font-size: 20px;">Payment Gateway</h2>
+          <div style="width: 36px;"></div> <!-- Spacer -->
+        </div>
+
+        <div class="checkout-container" style="padding-top: 0;">
+          <!-- Top Amount Display Header -->
+          <div class="payment-amount-header">
+            <span class="payment-amount-label">Amount Payable</span>
+            <span class="payment-amount-val" id="payment-pay-amount">₹0</span>
+          </div>
+
+          <!-- Payment Options Grid/List -->
+          <div class="payment-options-list" id="payment-options-container">
+
+            <!-- UPI -->
+            <div class="payment-option-card selected" data-method="UPI">
+              <div class="payment-radio">
+                <div class="payment-radio-dot"></div>
+              </div>
+              <div class="payment-option-text">
+                <span class="payment-option-title">UPI (Google Pay, PhonePe, BHIM)</span>
+                <span class="payment-option-sub">Pay instantly via your linked bank accounts.</span>
+              </div>
+              <i data-lucide="smartphone" style="margin-left: auto; color: var(--text-light); width: 20px;"></i>
+            </div>
+
+            <!-- Credit/Debit Card -->
+            <div class="payment-option-card" data-method="Card">
+              <div class="payment-radio">
+                <div class="payment-radio-dot"></div>
+              </div>
+              <div class="payment-option-text">
+                <span class="payment-option-title">Credit / Debit Card</span>
+                <span class="payment-option-sub">Visa, Mastercard, RuPay, Maestro</span>
+              </div>
+              <i data-lucide="credit-card" style="margin-left: auto; color: var(--text-light); width: 20px;"></i>
+            </div>
+
+            <!-- EMI (Conditional) -->
+            <div class="payment-option-card" id="payment-option-emi" data-method="EMI">
+              <div class="payment-radio">
+                <div class="payment-radio-dot"></div>
+              </div>
+              <div class="payment-option-text">
+                <span class="payment-option-title">Easy EMI (Monthly Installments)</span>
+                <span class="payment-option-sub">Available on orders above ₹3,000</span>
+              </div>
+              <span
+                style="margin-left: auto; font-size: 9px; font-weight: 700; color: var(--accent); background: var(--accent-light); padding: 2px 6px; border-radius: var(--radius-sm);">Popular</span>
+            </div>
+
+            <!-- Net Banking -->
+            <div class="payment-option-card" data-method="NetBanking">
+              <div class="payment-radio">
+                <div class="payment-radio-dot"></div>
+              </div>
+              <div class="payment-option-text">
+                <span class="payment-option-title">Net Banking</span>
+                <span class="payment-option-sub">All major Indian banks supported</span>
+              </div>
+              <i data-lucide="globe" style="margin-left: auto; color: var(--text-light); width: 20px;"></i>
+            </div>
+
+            <!-- Cash on Delivery -->
+            <div class="payment-option-card" data-method="COD">
+              <div class="payment-radio">
+                <div class="payment-radio-dot"></div>
+              </div>
+              <div class="payment-option-text">
+                <span class="payment-option-title">Cash on Delivery</span>
+                <span class="payment-option-sub">Pay cash when order is delivered.</span>
+              </div>
+              <i data-lucide="banknote" style="margin-left: auto; color: var(--text-light); width: 20px;"></i>
+            </div>
+
+            <!-- Gift Cards / Coupons -->
+            <div class="payment-option-card" data-method="GiftCard">
+              <div class="payment-radio">
+                <div class="payment-radio-dot"></div>
+              </div>
+              <div class="payment-option-text">
+                <span class="payment-option-title">Gift Card / Promo Coupon</span>
+                <span class="payment-option-sub">Apply your custom 10-digit voucher code.</span>
+              </div>
+              <i data-lucide="ticket" style="margin-left: auto; color: var(--text-light); width: 20px;"></i>
+            </div>
+
+          </div>
+
+          <button class="btn btn-accent" id="btn-payment-proceed" style="margin-top: 8px;">
+            <i data-lucide="shield-check" style="width: 18px;"></i>
+            <span>Proceed to Pay</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 9. TAB 3: ACCOUNT SCREEN -->
+      <div id="screen-account" class="screen-view">
+        <!-- Top Profile Display -->
+        <div class="profile-section">
+          <div class="profile-avatar-wrap">
+            <div class="profile-avatar" id="account-avatar-char">U</div>
+          </div>
+          <h2 class="profile-name" id="account-user-name">User Profile</h2>
+          <div class="profile-meta" id="account-user-email">user@nexcart.com</div>
+        </div>
+
+        <!-- 2x2 Grid Menu -->
+        <div class="account-grid-menu">
+          <div class="account-menu-card" id="btn-acc-orders">
+            <div class="account-menu-icon"><i data-lucide="package"></i></div>
+            <span class="account-menu-title">My Orders</span>
+          </div>
+          <div class="account-menu-card" id="btn-acc-wishlist">
+            <div class="account-menu-icon"><i data-lucide="heart"></i></div>
+            <span class="account-menu-title">Wishlist</span>
+          </div>
+          <div class="account-menu-card" id="btn-acc-cart">
+            <div class="account-menu-icon"><i data-lucide="shopping-cart"></i></div>
+            <span class="account-menu-title">Active Cart</span>
+          </div>
+          <div class="account-menu-card" id="btn-acc-help">
+            <div class="account-menu-icon"><i data-lucide="help-circle"></i></div>
+            <span class="account-menu-title">Help Center</span>
+          </div>
+        </div>
+
+        <!-- List Settings Menu -->
+        <div class="account-list-menu">
+          <div class="list-menu-item" id="btn-acc-edit-profile">
+            <div class="list-menu-left">
+              <i data-lucide="user" style="width: 18px;"></i>
+              <span>Edit Profile</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 16px; color: var(--text-light);"></i>
+          </div>
+
+          <div class="list-menu-item" id="btn-acc-saved-address">
+            <div class="list-menu-left">
+              <i data-lucide="map-pin" style="width: 18px;"></i>
+              <span>Saved Address</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 16px; color: var(--text-light);"></i>
+          </div>
+
+          <div class="list-menu-item" id="btn-acc-language">
+            <div class="list-menu-left">
+              <i data-lucide="languages" style="width: 18px;"></i>
+              <span>Select Language</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span class="list-menu-val" id="account-language-val">English</span>
+              <i data-lucide="chevron-right" style="width: 16px; color: var(--text-light);"></i>
+            </div>
+          </div>
+
+          <div class="list-menu-item" id="btn-acc-logout">
+            <div class="list-menu-left" style="color: var(--danger);">
+              <i data-lucide="log-out" style="width: 18px;"></i>
+              <span>Log Out</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 16px; color: var(--text-light);"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. ORDERS SUB-PAGE -->
+      <div id="screen-orders" class="screen-view">
+        <div class="view-header">
+          <button class="icon-btn pdp-back-btn" id="btn-orders-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <h2 class="view-title" style="font-size: 20px;">My Orders</h2>
+          <div style="width: 36px;"></div> <!-- Spacer -->
+        </div>
+
+        <div class="orders-list" id="orders-items-container">
+          <!-- Populated by app.js orders list -->
+        </div>
+      </div>
+
+      <!-- 11. CART SCREEN -->
+      <div id="screen-cart" class="screen-view">
+        <div class="view-header">
+          <h2 class="view-title">Shopping Cart</h2>
+          <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);" id="cart-item-count-badge">0
+            Items</span>
+        </div>
+
+        <div id="cart-container-main" style="display: flex; flex-direction: column; flex: 1;">
+          <!-- Items List -->
+          <div class="cart-items-list" id="cart-items-container">
+            <!-- Populated by app.js cart -->
+          </div>
+
+          <!-- Cart Sticky Footer -->
+          <div class="cart-sticky-bottom" id="cart-footer-bar" style="display: none;">
+            <div class="cart-total-info">
+              <span class="cart-total-label">Subtotal</span>
+              <span class="cart-total-price" id="cart-subtotal-val">₹0</span>
+            </div>
+            <button class="btn btn-primary" id="btn-cart-place-order" style="width: auto; padding: 12px 30px;">
+              <span>Place Order</span>
+              <i data-lucide="shopping-bag" style="width: 16px;"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 12. NOTIFICATIONS SCREEN -->
+      <div id="screen-notifications" class="screen-view">
+        <div class="view-header"
+          style="border-bottom: 1px solid var(--border-color); background-color: var(--bg-primary); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <button class="icon-btn pdp-back-btn" id="btn-notifications-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <h2 class="view-title" style="font-size: 18px; font-weight: 800; margin: 0;">Notifications</h2>
+          <button class="icon-btn" id="btn-notifications-clear-all" title="Clear all"
+            style="font-size: 12px; font-weight: 700; color: var(--primary);">Clear All</button>
+        </div>
+
+        <div id="notifications-list-container"
+          style="display: flex; flex-direction: column; padding: 16px 20px; gap: 12px;">
+          <!-- Dynamic notifications list -->
+        </div>
+      </div>
+
+      <!-- 13. EDIT PROFILE SCREEN -->
+      <div id="screen-edit-profile" class="screen-view"
+        style="display: none; flex-direction: column; overflow: hidden; height: 100%;">
+        <div class="view-header"
+          style="border-bottom: 1px solid var(--border-color); background-color: var(--bg-primary); padding: 16px 20px; display: flex; align-items: center; gap: 12px;">
+          <button class="icon-btn pdp-back-btn" id="btn-edit-profile-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <h2 class="view-title" id="lbl-edit-profile-title" style="font-size: 18px; font-weight: 800; margin: 0;">Edit
+            Profile</h2>
+        </div>
+
+        <div
+          style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; background-color: var(--bg-primary);">
+          <form id="form-edit-profile" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" id="lbl-ep-fullname"
+                style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Full
+                Name</label>
+              <input type="text" id="edit-profile-name" class="form-input" required placeholder="Enter full name">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="lbl-ep-email"
+                style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Email
+                ID</label>
+              <input type="email" id="edit-profile-email" class="form-input" readonly
+                style="background-color: var(--bg-tertiary); cursor: not-allowed;"
+                title="Email address cannot be changed">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="lbl-ep-phone"
+                style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Phone
+                Number</label>
+              <input type="tel" id="edit-profile-phone" class="form-input" required placeholder="Enter phone number">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="lbl-ep-lang"
+                style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Preferred
+                Language</label>
+              <select id="edit-profile-language" class="form-input"
+                style="height: 48px; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); padding: 0 12px; font-weight: 600; background-color: var(--bg-primary); color: var(--text-primary);">
+                <option value="English">English</option>
+                <option value="Hindi">Hindi (हिन्दी)</option>
+                <option value="Malayalam">Malayalam (മലയാളം)</option>
+                <option value="Japanese">Japanese (日本語)</option>
+                <option value="Spanish">Spanish (Español)</option>
+                <option value="German">German (Deutsch)</option>
+                <option value="French">French (Français)</option>
+              </select>
+            </div>
+
+            <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label" id="lbl-ep-district"
+                  style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">District</label>
+                <input type="text" id="edit-profile-district" class="form-input" required placeholder="District">
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl-ep-city"
+                  style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">City</label>
+                <input type="text" id="edit-profile-city" class="form-input" required placeholder="City">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="lbl-ep-address"
+                style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Street
+                Address</label>
+              <textarea id="edit-profile-address" class="form-input" required style="min-height: 80px; padding: 12px;"
+                placeholder="Enter complete address"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="btn-ep-submit" style="margin-top: 10px; width: 100%;">
+              <span>Update Profile</span>
+              <i data-lucide="check" style="width: 18px;"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Support FAB Floating Button -->
+    <div class="fab-support" id="fab-support-btn" title="Customer Support">
+      <i data-lucide="message-square" style="width: 20px; height: 20px;"></i>
+    </div>
+
+    <!-- Fixed Bottom Navigation Bar -->
+    <nav class="sticky-navbar" id="app-bottom-nav" style="display: none;">
+      <button class="nav-tab active" data-tab="home">
+        <i data-lucide="home"></i>
+        <span>Home</span>
+      </button>
+      <button class="nav-tab" data-tab="categories">
+        <i data-lucide="layout-grid"></i>
+        <span>Categories</span>
+      </button>
+      <button class="nav-tab" data-tab="account">
+        <i data-lucide="user"></i>
+        <span>Account</span>
+      </button>
+      <button class="nav-tab" data-tab="cart">
+        <i data-lucide="shopping-cart"></i>
+        <span>Cart</span>
+        <span class="badge" id="bottom-nav-cart-badge" style="display: none;">0</span>
+      </button>
+    </nav>
+
+    <!-- Simulating order success popup -->
+    <div class="modal-overlay" id="success-modal-overlay">
+      <div class="modal-card">
+        <div class="success-icon-wrap">
+          <i data-lucide="check-circle-2"></i>
+        </div>
+        <h3 style="font-size: 20px; font-weight: 800;">Order Confirmed!</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; max-width: 85%;">Your payment was
+          processed successfully. Thank you for choosing NexCart!</p>
+        <div
+          style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-md); font-size: 12px; font-weight: 700; color: var(--text-secondary); width: 100%;">
+          Order ID: <span id="success-order-id" style="color: var(--primary);">NX-9842-2026</span>
+        </div>
+        <button class="btn btn-primary" id="btn-success-modal-close" style="margin-top: 10px;">
+          <span>Track Order</span>
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Address CRUD Bottom Sheet Modal Overlay -->
+    <div class="bottom-sheet-overlay" id="address-sheet-overlay">
+      <div class="bottom-sheet-content">
+        <div class="sheet-header">
+          <h3 class="sheet-title" id="lbl-address-sheet-title">Saved Addresses</h3>
+          <button class="icon-btn" id="btn-close-address-sheet" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="sheet-body" id="address-sheet-body" style="padding-bottom: 24px;">
+          <!-- Populated dynamically via CRUD in app.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Language Selector Dialogue Box Modal Overlay (Centered Alert Dialogue) -->
+    <div class="modal-overlay" id="language-dialog-overlay"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); opacity: 1; align-items: center; justify-content: center;">
+      <div class="modal-card"
+        style="max-width: 400px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin: 0;"
+            id="lbl-language-dialog-title">Select App Language</h3>
+          <button class="icon-btn" id="btn-close-language-dialog" title="Close"
+            style="border: none; background: none; cursor: pointer;">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;" id="lbl-language-dialog-desc">Choose your
+          preferred language for the entire shopping experience.</p>
+        <div class="lang-dropdown-wrapper">
+          <div class="lang-select-box" id="lang-active-box">
+            <span id="lang-active-label">English</span>
+            <i data-lucide="chevron-down" style="width: 18px;"></i>
+          </div>
+          <div class="lang-options-dropdown" id="lang-dropdown-menu">
+            <!-- Added option languages dynamically -->
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-language-apply-changes" style="width: 100%; margin-top: 4px;">
+          <span id="lbl-lang-apply-btn">Apply Language</span>
+          <i data-lucide="languages" style="width: 18px;"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Lightbox Modal for Large PDP Images -->
+    <div class="modal-overlay" id="pdp-lightbox-modal"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); opacity: 1; align-items: center; justify-content: center;">
+      <button class="icon-btn" id="btn-close-lightbox" title="Close Lightbox"
+        style="position: absolute; top: 20px; right: 20px; color: white; background: rgba(0,0,0,0.5); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; z-index: 2001;">
+        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+      </button>
+      <div style="max-width: 90%; max-height: 90%; display: flex; align-items: center; justify-content: center;">
+        <img src="" alt="" id="pdp-lightbox-img"
+          style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+      </div>
+    </div>
+
+    <!-- Promo Code Alert Dialog Modal -->
+    <div class="modal-overlay" id="promo-modal-overlay"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); opacity: 1; align-items: center; justify-content: center;">
+      <div class="modal-card"
+        style="max-width: 380px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin: 0;">Apply Promo Code</h3>
+          <button class="icon-btn" id="btn-close-promo-modal" style="border: none; background: none; cursor: pointer;">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Enter Promo Code</label>
+          <input type="text" id="promo-code-input" class="form-input" style="height: 42px;"
+            placeholder="Enter Promo Code">
+          <div id="promo-error-msg"
+            style="color: var(--danger); font-size: 12px; font-weight: 700; display: none; margin-top: 4px;">Promo not
+            found</div>
+        </div>
+        <button class="btn btn-primary" id="btn-promo-apply-submit" style="width: 100%;">
+          <span>Apply Code</span>
+          <i data-lucide="check" style="width: 18px;"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Reusable Custom Alert Dialog Box -->
+    <div class="modal-overlay" id="custom-alert-overlay">
+      <div class="modal-card" style="max-width: 400px; padding: 24px;">
+        <div class="success-icon-wrap" id="custom-alert-icon-wrap"
+          style="width: 54px; height: 54px; margin-bottom: 8px;">
+          <i id="custom-alert-icon" data-lucide="info" style="width: 26px; height: 26px;"></i>
+        </div>
+        <h3 id="custom-alert-title" style="font-size: 18px; font-weight: 800; color: var(--text-primary);">Alert</h3>
+        <p id="custom-alert-content"
+          style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; max-width: 90%; margin-bottom: 4px;">
+          Alert message content goes here.</p>
+        <button class="btn btn-primary btn-sm" id="btn-custom-alert-close"
+          style="width: auto; padding: 10px 24px; margin-top: 8px;">
+          <span>Close</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Lucide Icons Library -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- ── Data Layer (load before app.js) ── -->
+  <!-- Product category files -->
+  <script src="data/products/fashion.js"></script>
+  <script src="data/products/electronics.js"></script>
+  <script src="data/products/appliances.js"></script>
+  <script src="data/products/toys.js"></script>
+  <script src="data/products/others.js"></script>
+  <!-- Merges categories + runs enrichment -->
+  <script src="data/products/index.js"></script>
+  <!-- App config: banners, interests, category tabs -->
+  <script src="data/config.js"></script>
+  <!-- User accounts, Store state, auth helpers -->
+  <script src="data/users.js"></script>
+
+  <!-- ── Core Application Logic ── -->
+  <script src="app.js"></script>
+</body>
+
+</html>
