@@ -31,7 +31,7 @@ const ELECTRONICS_PRODUCTS = [
       "Octa-core AI chipset (built on advanced 3nm process)",
       "Supports 15W MagSafe and fast wireless charging"
     ]
-  },
+  }, 
   {
     id: "tech-02",
     name: "ZenBook OLED 14.5\" Laptop",

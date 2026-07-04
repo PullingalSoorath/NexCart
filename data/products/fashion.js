@@ -3,7 +3,7 @@
 // Category: Fashion (Clothing, Gowns, Jackets, etc.)
 // ============================================================
 
-const FASHION_PRODUCTS = [
+const FASHION_PRODUCTS = [ 
   {
     id: "fash-01",
     name: "AeroWeave Premium Summer Tee",

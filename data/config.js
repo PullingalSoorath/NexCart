@@ -4,6 +4,7 @@
 // ============================================================
 
 // ── Hero Banner / Carousel Slides ───────────────────────────
+
 const BANNER_SLIDES = [
   {
     image: "hero_banner_fashion.png",

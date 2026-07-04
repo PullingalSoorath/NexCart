@@ -2677,3 +2677,5 @@ window.addEventListener("DOMContentLoaded", () => {
   // Route to auth screen if no active session
   routeTo("screen-auth");
 });
+
+

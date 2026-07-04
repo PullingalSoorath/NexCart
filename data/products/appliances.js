@@ -31,6 +31,7 @@ const APPLIANCES_PRODUCTS = [
       "Double noise-reduction fan systems (ultra quiet)"
     ]
   },
+  
   {
     id: "app-02",
     name: "AirCook XL Digital Air Fryer",

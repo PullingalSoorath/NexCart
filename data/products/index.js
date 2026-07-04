@@ -3,6 +3,7 @@
 // Combines all category files into one PRODUCT_CATALOG array.
 // Each category file must be loaded BEFORE this file in index.html.
 //
+
 // Load order in index.html:
 //   <script src="data/products/fashion.js"></script>
 //   <script src="data/products/electronics.js"></script>

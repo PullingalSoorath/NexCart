@@ -57,6 +57,7 @@ const OTHERS_PRODUCTS = [
       "Comes with a 10-step quick assembly guide"
     ]
   },
+  
   {
     id: "book-01",
     name: "The Quantum Mind (Hardcover)",
