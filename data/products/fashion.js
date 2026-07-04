@@ -13,7 +13,9 @@ const FASHION_PRODUCTS = [
     rating: 4.6,
     reviews: 182,
     trending: true,
-    image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Experience ultimate breathability with our AeroWeave cotton blend tee. Built for warm summer days, offering a lightweight profile, tailored shoulder fit, and eco-friendly pre-shrunk fabric.",
     interestGroup: "Fashion",
     warranty: "Brand Authenticity Guarantee",
@@ -39,7 +41,9 @@ const FASHION_PRODUCTS = [
     rating: 4.8,
     reviews: 95,
     trending: false,
-    image: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "A classic streetwear staple redesigned for comfort. Heavy-weight washed denim with triple-stitched seams, brushed metal hardware, and dual interior security pockets.",
     interestGroup: "Fashion",
     warranty: "Brand Authenticity Guarantee",
@@ -64,7 +68,9 @@ const FASHION_PRODUCTS = [
     rating: 4.9,
     reviews: 64,
     trending: true,
-    image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Exquisite mulberry silk gown featuring an elegant cowl neckline and floor-sweeping silhouette. Perfect for evening galas, high-profile events, and special celebrations.",
     interestGroup: "Fashion",
     warranty: "Brand Authenticity Guarantee",

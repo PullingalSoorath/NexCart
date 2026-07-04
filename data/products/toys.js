@@ -13,7 +13,9 @@ const TOYS_PRODUCTS = [
     rating: 4.9,
     reviews: 142,
     trending: true,
-    image: "https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "A gorgeous premium collector's replica. Diecast metal chassis with opening doors, hoods, and functional steering linkage. Modeled with historic accuracy.",
     interestGroup: "Diecast Miniatures",
     warranty: "Brand Authenticity Guarantee",
@@ -40,7 +42,9 @@ const TOYS_PRODUCTS = [
     rating: 4.7,
     reviews: 98,
     trending: false,
-    image: "https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Assemble a breathtaking medieval fortification. Contains 1,400 interlocking bricks, detailed modular rooms, defensive watchtowers, and 6 micro-figurines.",
     interestGroup: "Toys",
     warranty: "Brand Authenticity Guarantee",

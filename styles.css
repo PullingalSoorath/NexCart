@@ -1808,6 +1808,11 @@ button {
   color: var(--primary);
 }
 
+.order-status-chip.shipped {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
 .order-product-row {
   display: flex;
   gap: 12px;
@@ -2297,4 +2302,51 @@ button {
     top: 20px;
     z-index: 10;
   }
+}
+
+/* Categories Filter System */
+.rating-filter-chip {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-primary);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: var(--transition-fast);
+}
+
+.rating-filter-chip:hover {
+  border-color: var(--text-light);
+}
+
+.rating-filter-chip.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Search Suggestions Item */
+.suggestion-item:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Dark Theme Variables Override */
+body.dark-theme {
+  --bg-primary: #0f172a;       /* Slate 900 */
+  --bg-secondary: #1e293b;     /* Slate 800 */
+  --bg-tertiary: #334155;      /* Slate 700 */
+  --text-primary: #f8fafc;     /* Slate 50 */
+  --text-secondary: #cbd5e1;   /* Slate 300 */
+  --text-light: #64748b;       /* Slate 500 */
+  --border-color: #334155;     /* Slate 700 */
+  
+  --glass-bg: rgba(15, 23, 42, 0.75);
+  --glass-border: rgba(51, 65, 85, 0.8);
+  --primary-light: rgba(79, 70, 229, 0.25);
+  --accent-light: rgba(16, 185, 129, 0.25);
 }

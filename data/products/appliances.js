@@ -13,7 +13,9 @@ const APPLIANCES_PRODUCTS = [
     rating: 4.7,
     reviews: 312,
     trending: false,
-    image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Brew café-grade espresso from home. Equipped with a high-pressure 19-bar Italian pump, dual PID temperature controls, and an integrated adjustable steam wand for microfoam latte art.",
     interestGroup: "Kitchen Appliances",
     warranty: "1 Year Brand Warranty",
@@ -41,7 +43,9 @@ const APPLIANCES_PRODUCTS = [
     rating: 4.6,
     reviews: 843,
     trending: true,
-    image: "https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Fry healthier meals with up to 85% less oil. Double-fan heating system yields crispier textures in minutes. Offers 8 presets and a non-stick dishwasher safe basket.",
     interestGroup: "Kitchen Appliances",
     warranty: "1 Year Brand Warranty",
@@ -68,7 +72,9 @@ const APPLIANCES_PRODUCTS = [
     rating: 4.8,
     reviews: 219,
     trending: false,
-    image: "https://images.unsplash.com/photo-1571175432247-fe370b4317dc?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1571175432247-fe370b4317dc?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Premium convertible smart refrigerator. Dynamic triple cooling zones prevent odor mixing, keeping fresh foods, frozen assets, and ice at their peak state.",
     interestGroup: "Home Appliances",
     warranty: "1 Year Brand Warranty",

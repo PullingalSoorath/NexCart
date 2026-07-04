@@ -44,6 +44,7 @@ function routeTo(screenId) {
   }
   
   Store.activeScreen = screenId;
+  updateBadges(); // Sync header & nav badges on every route transition
   
   // Determine Header & Bottom Nav visibility
   const header = document.getElementById("app-header");
@@ -150,14 +151,109 @@ function showAlert(title, content, type = "info", onClose = null) {
   overlay.classList.add("active");
 }
 
-// Redirect all showToast to showAlert for global UX compatibility
+// PREMIUM ANIMATED TOAST NOTIFICATION SYSTEM
 function showToast(message, type = "success") {
-  let title = "Notification";
-  if (type === "success") title = "Success";
-  else if (type === "error" || type === "danger") title = "Error";
-  else if (type === "warning") title = "Warning";
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.style.position = "fixed";
+    container.style.bottom = "80px"; // Positioned above sticky navigation bar
+    container.style.left = "50%";
+    container.style.transform = "translateX(-50%)";
+    container.style.zIndex = "9999";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "8px";
+    container.style.width = "90%";
+    container.style.maxWidth = "350px";
+    container.style.pointerEvents = "none";
+    document.body.appendChild(container);
+  }
   
-  showAlert(title, message, type);
+  const toast = document.createElement("div");
+  toast.className = `toast-message ${type}`;
+  
+  // High-fidelity background configuration based on toast type
+  let bg = "var(--bg-primary)";
+  let border = "1.5px solid var(--border-color)";
+  let textColor = "var(--text-primary)";
+  let closeColor = "var(--text-light)";
+  let iconColor = "var(--success)";
+  let iconName = "check-circle";
+
+  if (type === "success") {
+    bg = "rgba(16, 185, 129, 0.98)"; // Premium Emerald Green
+    border = "1.5px solid rgba(4, 120, 87, 0.4)";
+    textColor = "#ffffff";
+    closeColor = "rgba(255, 255, 255, 0.8)";
+    iconColor = "#ffffff";
+    iconName = "check-circle";
+  } else if (type === "error" || type === "danger") {
+    bg = "rgba(239, 68, 68, 0.98)"; // Elegant Crimson
+    border = "1.5px solid rgba(185, 28, 28, 0.4)";
+    textColor = "#ffffff";
+    closeColor = "rgba(255, 255, 255, 0.8)";
+    iconColor = "#ffffff";
+    iconName = "alert-circle";
+  } else if (type === "warning") {
+    bg = "rgba(245, 158, 11, 0.98)"; // Bright Gold
+    border = "1.5px solid rgba(180, 83, 9, 0.4)";
+    textColor = "#ffffff";
+    closeColor = "rgba(255, 255, 255, 0.8)";
+    iconColor = "#ffffff";
+    iconName = "alert-triangle";
+  } else if (type === "info") {
+    bg = "rgba(59, 130, 246, 0.98)"; // Royal Blue
+    border = "1.5px solid rgba(29, 78, 216, 0.4)";
+    textColor = "#ffffff";
+    closeColor = "rgba(255, 255, 255, 0.8)";
+    iconColor = "#ffffff";
+    iconName = "info";
+  }
+
+  toast.style.background = bg;
+  toast.style.border = border;
+  toast.style.borderRadius = "var(--radius-md)";
+  toast.style.padding = "10px 14px";
+  toast.style.display = "flex";
+  toast.style.alignItems = "center";
+  toast.style.gap = "10px";
+  toast.style.boxShadow = "var(--shadow-lg)";
+  toast.style.pointerEvents = "auto";
+  toast.style.backdropFilter = "blur(8px)";
+  
+  // Transition effects
+  toast.style.opacity = "0";
+  toast.style.transform = "translateY(25px) scale(0.9)";
+  toast.style.transition = "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+  
+  toast.innerHTML = `
+    <i class="toast-icon" data-lucide="${iconName}" style="width: 18px; height: 18px; color: ${iconColor}; flex-shrink: 0;"></i>
+    <span style="font-size: 12px; font-weight: 700; color: ${textColor}; flex: 1;">${message}</span>
+    <button style="border: none; background: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="this.parentElement.remove()">
+      <i data-lucide="x" style="width: 14px; height: 14px; color: ${closeColor};"></i>
+    </button>
+  `;
+  
+  container.appendChild(toast);
+  
+  if (window.lucide) window.lucide.createIcons();
+  
+  // Trigger animation reflow
+  setTimeout(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0) scale(1)";
+  }, 30);
+  
+  // Auto-remove after 3.2 seconds
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-10px) scale(0.95)";
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 3200);
 }
 
 // Render Star rating icons
@@ -276,7 +372,7 @@ function initUserDatabase() {
       name: "Anonymous User",
       email: "user@nexcart.com",
       password: "password123",
-      phone: "+91 9876543210",
+      phone: "+91 9090909090",
       language: "English",
       state: "Kerala",
       city: "Trivandrum",
@@ -294,7 +390,7 @@ function initUserDatabase() {
           city: "Trivandrum",
           state: "Kerala",
           pincode: "695001",
-          phone: "+91 9876543210"
+          phone: "+91 9090909090"
         }
       ]
     };
@@ -646,33 +742,207 @@ function renderHomeScreen() {
     recentlyWatchedSection.style.display = "none";
   }
 
-  // 5. Explore Products Grid View
-  const homeGridContainer = document.getElementById("home-product-grid");
-  if (homeGridContainer) {
-    homeGridContainer.innerHTML = PRODUCT_CATALOG.map(p => createProductCardHTML(p)).join('');
-  }
-  
-  attachProductCardEvents();
-  if (window.lucide) window.lucide.createIcons();
+  // 5. Explore Products Grid View (with active filters)
+  applyHomeFiltersAndRender();
 }
 
-// CATEGORIES SCREEN VIEW
+// HOME SCREEN DYNAMIC FILTERS & SORT
+let homeFilters = {
+  price: 130000,
+  rating: 0,
+  sort: "default"
+};
+
+function applyHomeFiltersAndRender() {
+  const homeGridContainer = document.getElementById("home-product-grid");
+  if (!homeGridContainer) return;
+
+  // Skeletal loader
+  homeGridContainer.innerHTML = Array(4).fill(0).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton-img skeleton"></div>
+      <div class="skeleton-text title skeleton"></div>
+      <div class="skeleton-text price skeleton"></div>
+    </div>
+  `).join('');
+
+  setTimeout(() => {
+    let products = [...PRODUCT_CATALOG];
+
+    // Apply Price Filter
+    products = products.filter(p => p.price <= homeFilters.price);
+
+    // Apply Rating Filter
+    if (homeFilters.rating > 0) {
+      products = products.filter(p => p.rating >= homeFilters.rating);
+    }
+
+    // Apply Sorting
+    if (homeFilters.sort === "price-asc") {
+      products.sort((a, b) => a.price - b.price);
+    } else if (homeFilters.sort === "price-desc") {
+      products.sort((a, b) => b.price - a.price);
+    } else if (homeFilters.sort === "rating") {
+      products.sort((a, b) => b.rating - a.rating);
+    }
+
+    // Update summary label
+    const activeFiltersLbl = document.getElementById("lbl-home-active-filters-count");
+    if (activeFiltersLbl) {
+      let activeCountText = "All Products";
+      if (homeFilters.price < 130000 || homeFilters.rating > 0 || homeFilters.sort !== "default") {
+        let filters = [];
+        if (homeFilters.price < 130000) filters.push(`Under ₹${homeFilters.price.toLocaleString("en-IN")}`);
+        if (homeFilters.rating > 0) filters.push(`${homeFilters.rating}★+`);
+        if (homeFilters.sort !== "default") filters.push("Sorted");
+        activeCountText = filters.join(" | ");
+      }
+      activeFiltersLbl.textContent = `${activeCountText} (${products.length} found)`;
+    }
+
+    if (products.length > 0) {
+      homeGridContainer.innerHTML = products.map(p => createProductCardHTML(p)).join('');
+    } else {
+      homeGridContainer.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-secondary);">
+          <i data-lucide="frown" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
+          <p style="font-weight: 600;">No items found matching the selected filters.</p>
+        </div>
+      `;
+    }
+
+    attachProductCardEvents();
+    if (window.lucide) window.lucide.createIcons();
+  }, 300);
+}
+
+function initHomeScreenFilters() {
+  const toggleBtn = document.getElementById("btn-home-toggle-filters");
+  const filtersContent = document.getElementById("home-filters-content");
+  if (toggleBtn && filtersContent) {
+    filtersContent.style.display = "none";
+    toggleBtn.addEventListener("click", () => {
+      if (filtersContent.style.display === "none") {
+        filtersContent.style.display = "flex";
+      } else {
+        filtersContent.style.display = "none";
+      }
+    });
+  }
+
+  const priceSlider = document.getElementById("home-filter-price-slider");
+  const priceLabel = document.getElementById("lbl-home-max-price-filter");
+  if (priceSlider && priceLabel) {
+    priceSlider.addEventListener("input", (e) => {
+      const val = parseInt(e.target.value);
+      priceLabel.textContent = `₹${val.toLocaleString("en-IN")}`;
+      homeFilters.price = val;
+      applyHomeFiltersAndRender();
+    });
+  }
+
+  document.querySelectorAll(".home-rating-filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".home-rating-filter-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      
+      const ratingVal = parseFloat(chip.getAttribute("data-rating"));
+      homeFilters.rating = ratingVal;
+      applyHomeFiltersAndRender();
+    });
+  });
+
+  const sortSelect = document.getElementById("home-sort-select");
+  if (sortSelect) {
+    sortSelect.addEventListener("change", (e) => {
+      homeFilters.sort = e.target.value;
+      applyHomeFiltersAndRender();
+    });
+  }
+
+  const resetBtn = document.getElementById("btn-home-reset-filters");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      homeFilters = {
+        price: 130000,
+        rating: 0,
+        sort: "default"
+      };
+      
+      if (priceSlider) priceSlider.value = 130000;
+      if (priceLabel) priceLabel.textContent = "₹1,30,000";
+      if (sortSelect) sortSelect.value = "default";
+      
+      document.querySelectorAll(".home-rating-filter-chip").forEach(c => {
+        if (parseFloat(c.getAttribute("data-rating")) === 0) {
+          c.classList.add("active");
+        } else {
+          c.classList.remove("active");
+        }
+      });
+      
+      applyHomeFiltersAndRender();
+    });
+  }
+}
+
+
+// CATEGORIES SCREEN VIEW & DYNAMIC FILTERS
+let activeCategoryId = "Fashion";
+let categoryFilters = {
+  price: 130000,
+  rating: 0,
+  sort: "default"
+};
+
 function showCategoryProducts(catId) {
-  // Update sidebar selection
+  activeCategoryId = catId;
+  
+  // Reset filter values
+  categoryFilters = {
+    price: 130000,
+    rating: 0,
+    sort: "default"
+  };
+
+  // Sync UI controls
+  const priceSlider = document.getElementById("filter-price-slider");
+  if (priceSlider) priceSlider.value = 130000;
+  
+  const priceLabel = document.getElementById("lbl-max-price-filter");
+  if (priceLabel) priceLabel.textContent = "₹1,30,000";
+  
+  const sortSelect = document.getElementById("category-sort-select");
+  if (sortSelect) sortSelect.value = "default";
+  
+  document.querySelectorAll(".rating-filter-chip").forEach(chip => {
+    if (chip.getAttribute("data-rating") === "0") {
+      chip.classList.add("active");
+    } else {
+      chip.classList.remove("active");
+    }
+  });
+
+  applyCategoryFiltersAndRender();
+}
+
+function applyCategoryFiltersAndRender() {
+  const headerTitle = document.getElementById("category-content-title");
+  if (headerTitle) headerTitle.textContent = activeCategoryId;
+  
+  // Highlight correct tab in sidebar
   document.querySelectorAll(".sidebar-tab").forEach(tab => {
-    if (tab.getAttribute("data-cat") === catId) {
+    if (tab.getAttribute("data-cat") === activeCategoryId) {
       tab.classList.add("active");
     } else {
       tab.classList.remove("active");
     }
   });
 
-  const headerTitle = document.getElementById("category-content-title");
-  headerTitle.textContent = catId;
-  
   const gridContainer = document.getElementById("category-product-grid");
-  
-  // Show skeletal loaders first to mock networking latency
+  if (!gridContainer) return;
+
+  // Skeletal loader
   gridContainer.innerHTML = Array(4).fill(0).map(() => `
     <div class="skeleton-card">
       <div class="skeleton-img skeleton"></div>
@@ -680,25 +950,55 @@ function showCategoryProducts(catId) {
       <div class="skeleton-text price skeleton"></div>
     </div>
   `).join('');
-  
+
   setTimeout(() => {
-    // Filter product catalogue
-    const filteredProducts = PRODUCT_CATALOG.filter(p => p.category === catId);
-    
-    if (filteredProducts.length > 0) {
-      gridContainer.innerHTML = filteredProducts.map(p => createProductCardHTML(p)).join('');
+    let products = PRODUCT_CATALOG.filter(p => p.category === activeCategoryId);
+
+    // Apply Price Filter
+    products = products.filter(p => p.price <= categoryFilters.price);
+
+    // Apply Rating Filter
+    if (categoryFilters.rating > 0) {
+      products = products.filter(p => p.rating >= categoryFilters.rating);
+    }
+
+    // Apply Sorting
+    if (categoryFilters.sort === "price-asc") {
+      products.sort((a, b) => a.price - b.price);
+    } else if (categoryFilters.sort === "price-desc") {
+      products.sort((a, b) => b.price - a.price);
+    } else if (categoryFilters.sort === "rating") {
+      products.sort((a, b) => b.rating - a.rating);
+    }
+
+    // Update summary label
+    const activeFiltersLbl = document.getElementById("lbl-active-filters-count");
+    if (activeFiltersLbl) {
+      let activeCountText = "All Products";
+      if (categoryFilters.price < 130000 || categoryFilters.rating > 0 || categoryFilters.sort !== "default") {
+        let filters = [];
+        if (categoryFilters.price < 130000) filters.push(`Under ₹${categoryFilters.price.toLocaleString("en-IN")}`);
+        if (categoryFilters.rating > 0) filters.push(`${categoryFilters.rating}★+`);
+        if (categoryFilters.sort !== "default") filters.push("Sorted");
+        activeCountText = filters.join(" | ");
+      }
+      activeFiltersLbl.textContent = `${activeCountText} (${products.length} found)`;
+    }
+
+    if (products.length > 0) {
+      gridContainer.innerHTML = products.map(p => createProductCardHTML(p)).join('');
     } else {
       gridContainer.innerHTML = `
         <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-secondary);">
           <i data-lucide="frown" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
-          <p style="font-weight: 600;">No items found in this category.</p>
+          <p style="font-weight: 600;">No items found matching the selected filters.</p>
         </div>
       `;
     }
-    
+
     attachProductCardEvents();
     if (window.lucide) window.lucide.createIcons();
-  }, 400);
+  }, 300);
 }
 
 function initCategories() {
@@ -712,15 +1012,71 @@ function initCategories() {
     </div>
   `).join('');
   
-  // Add tab click listeners
+  // Sidebar tab click
   sidebar.querySelectorAll(".sidebar-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       const catId = tab.getAttribute("data-cat");
       showCategoryProducts(catId);
     });
   });
+
+  // Expandable filters panel toggle
+  const toggleBtn = document.getElementById("btn-toggle-filters");
+  const filtersContent = document.getElementById("category-filters-content");
+  if (toggleBtn && filtersContent) {
+    // Hidden by default to keep screen neat
+    filtersContent.style.display = "none";
+    toggleBtn.addEventListener("click", () => {
+      if (filtersContent.style.display === "none") {
+        filtersContent.style.display = "flex";
+      } else {
+        filtersContent.style.display = "none";
+      }
+    });
+  }
+
+  // Price slider change listener
+  const priceSlider = document.getElementById("filter-price-slider");
+  const priceLabel = document.getElementById("lbl-max-price-filter");
+  if (priceSlider && priceLabel) {
+    priceSlider.addEventListener("input", (e) => {
+      const val = parseInt(e.target.value);
+      priceLabel.textContent = `₹${val.toLocaleString("en-IN")}`;
+      categoryFilters.price = val;
+      applyCategoryFiltersAndRender();
+    });
+  }
+
+  // Rating Filter Chips
+  document.querySelectorAll(".rating-filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".rating-filter-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      
+      const ratingVal = parseFloat(chip.getAttribute("data-rating"));
+      categoryFilters.rating = ratingVal;
+      applyCategoryFiltersAndRender();
+    });
+  });
+
+  // Sort dropdown change listener
+  const sortSelect = document.getElementById("category-sort-select");
+  if (sortSelect) {
+    sortSelect.addEventListener("change", (e) => {
+      categoryFilters.sort = e.target.value;
+      applyCategoryFiltersAndRender();
+    });
+  }
+
+  // Reset button
+  const resetBtn = document.getElementById("btn-reset-filters");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      showCategoryProducts(activeCategoryId);
+    });
+  }
   
-  // Default to first tab (Fashion)
+  // Default to first category
   showCategoryProducts("Fashion");
 }
 
@@ -955,6 +1311,18 @@ function initPDPSlider(product) {
   });
 }
 
+function getProductReviews(productId) {
+  const allReviews = JSON.parse(localStorage.getItem("nexcart_reviews") || "{}");
+  if (!allReviews[productId]) {
+    allReviews[productId] = [
+      { name: "Siddharth P.", rating: 5, date: "2026-06-18", text: "Exceptional quality! Completely satisfied with the performance and premium materials." },
+      { name: "Rohit K.", rating: 4, date: "2026-06-22", text: "Great value for money. Minor delays in shipping but the product itself is outstanding." }
+    ];
+    localStorage.setItem("nexcart_reviews", JSON.stringify(allReviews));
+  }
+  return allReviews[productId];
+}
+
 function openProductDetails(productId) {
   const product = PRODUCT_CATALOG.find(p => p.id === productId);
   if (!product) return;
@@ -1032,7 +1400,7 @@ function openProductDetails(productId) {
   document.getElementById("btn-pdp-right-add-cart").onclick = () => {
     const qty = parseInt(document.getElementById("pdp-qty-select").value);
     addToCart(product, qty, pdpSelectedSize, pdpSelectedColor);
-    showAlert("Cart Updated", `Added ${qty} item(s) to Cart!`, "success");
+    showToast(`Added ${qty} item(s) to Cart!`, "success");
     updateBadges();
   };
 
@@ -1113,6 +1481,126 @@ function openProductDetails(productId) {
     `;
   }
   
+  // 1. Technical Specifications Table
+  const specsTableContainer = document.getElementById("pdp-specs-table-container");
+  const specsSec = document.getElementById("pdp-specs-section");
+  if (specsTableContainer && specsSec) {
+    if (product.specs && Object.keys(product.specs).length > 0) {
+      specsSec.style.display = "block";
+      specsTableContainer.innerHTML = Object.entries(product.specs).map(([key, val]) => `
+        <div style="display: grid; grid-template-columns: 1fr 2fr; padding: 10px 14px; border-bottom: 1px solid var(--border-color); font-size: 12px; line-height: 1.4;">
+          <span style="font-weight: 700; color: var(--text-secondary);">${key}</span>
+          <span style="color: var(--text-primary); font-weight: 600;">${val}</span>
+        </div>
+      `).join('');
+    } else {
+      specsSec.style.display = "none";
+    }
+  }
+
+  // 2. Customer Reviews System
+  function renderProductReviewsList() {
+    const reviews = getProductReviews(product.id);
+    const totalRatingSum = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = (totalRatingSum / reviews.length).toFixed(1);
+    
+    const summaryRow = document.getElementById("pdp-reviews-summary-row");
+    if (summaryRow) {
+      summaryRow.innerHTML = `
+        <div style="display: flex; color: var(--warning); gap: 2px;">
+          ${getStarsHTML(parseFloat(avgRating))}
+        </div>
+        <span style="font-size: 14px; font-weight: 800; color: var(--text-primary);">${avgRating} out of 5</span>
+        <span style="font-size: 11px; color: var(--text-light); font-weight: 700;">(${reviews.length} customer reviews)</span>
+      `;
+    }
+
+    const listContainer = document.getElementById("pdp-reviews-list");
+    if (listContainer) {
+      listContainer.innerHTML = reviews.map(r => `
+        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; font-weight: 800; color: var(--text-primary);">${r.name}</span>
+            <span style="font-size: 10px; color: var(--text-light); font-weight: 700;">${r.date}</span>
+          </div>
+          <div style="display: flex; color: var(--warning); gap: 2px; font-size: 12px;">
+            ${getStarsHTML(r.rating)}
+          </div>
+          <p style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; margin: 2px 0 0 0;">${r.text}</p>
+        </div>
+      `).join('');
+    }
+  }
+
+  renderProductReviewsList();
+
+  // Reset Review Form State
+  let chosenReviewRating = 5;
+  const reviewStars = document.querySelectorAll(".review-star-select");
+  
+  function highlightStars(rating) {
+    reviewStars.forEach(star => {
+      const starVal = parseInt(star.getAttribute("data-rating"));
+      if (starVal <= rating) {
+        star.style.color = "var(--warning)";
+        star.style.fill = "currentColor";
+      } else {
+        star.style.color = "var(--text-light)";
+        star.style.fill = "none";
+      }
+    });
+  }
+  
+  highlightStars(chosenReviewRating);
+  
+  reviewStars.forEach(star => {
+    star.onclick = () => {
+      chosenReviewRating = parseInt(star.getAttribute("data-rating"));
+      highlightStars(chosenReviewRating);
+    };
+  });
+
+  const addReviewForm = document.getElementById("form-pdp-add-review");
+  if (addReviewForm) {
+    addReviewForm.onsubmit = (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById("pdp-review-name-input");
+      const textInput = document.getElementById("pdp-review-text-input");
+      
+      const newReview = {
+        name: nameInput.value.trim(),
+        rating: chosenReviewRating,
+        date: new Date().toISOString().split('T')[0],
+        text: textInput.value.trim()
+      };
+      
+      const allReviews = JSON.parse(localStorage.getItem("nexcart_reviews") || "{}");
+      if (!allReviews[product.id]) allReviews[product.id] = [];
+      allReviews[product.id].push(newReview);
+      localStorage.setItem("nexcart_reviews", JSON.stringify(allReviews));
+      
+      const catalogProd = PRODUCT_CATALOG.find(p => p.id === product.id);
+      if (catalogProd) {
+        const prodReviews = allReviews[product.id];
+        const sum = prodReviews.reduce((s, r) => s + r.rating, 0);
+        catalogProd.rating = parseFloat((sum / prodReviews.length).toFixed(1));
+        catalogProd.reviews = prodReviews.length;
+      }
+      
+      nameInput.value = "";
+      textInput.value = "";
+      chosenReviewRating = 5;
+      highlightStars(5);
+      
+      showToast("Review submitted successfully!", "success");
+      renderProductReviewsList();
+      
+      if (document.getElementById("pdp-rating-val")) document.getElementById("pdp-rating-val").textContent = catalogProd.rating;
+      if (document.getElementById("pdp-reviews-label")) document.getElementById("pdp-reviews-label").textContent = `${catalogProd.reviews.toLocaleString()} ratings`;
+      document.getElementById("pdp-stars-container").innerHTML = getStarsHTML(catalogProd.rating);
+    };
+  }
+
   // Render Browsing History track (pass current product to exclude it)
   renderBrowsingHistory(productId);
   
@@ -1160,11 +1648,17 @@ function addToCart(product, quantity = 1, size = "", color = "") {
   );
   
   if (itemIndex > -1) {
-    Store.cart[itemIndex].quantity += quantity;
+    const newQty = Store.cart[itemIndex].quantity + quantity;
+    if (newQty > 10) {
+      Store.cart[itemIndex].quantity = 10;
+      showToast("Maximum limit of 10 units reached per variant!", "warning");
+    } else {
+      Store.cart[itemIndex].quantity = newQty;
+    }
   } else {
     Store.cart.push({
       product: product,
-      quantity: quantity,
+      quantity: Math.min(quantity, 10),
       size: size,
       color: color
     });
@@ -1176,7 +1670,13 @@ function updateCartQuantity(cartIndex, change) {
   const item = Store.cart[cartIndex];
   if (!item) return;
   
-  item.quantity += change;
+  const newQty = item.quantity + change;
+  if (newQty > 10) {
+    showToast("Maximum limit of 10 units reached per variant!", "warning");
+    return;
+  }
+  
+  item.quantity = newQty;
   if (item.quantity <= 0) {
     Store.cart.splice(cartIndex, 1);
     showToast("Item removed from Cart");
@@ -1524,6 +2024,20 @@ function initPaymentScreen() {
     };
   }
 
+  // Coupon items click listener
+  document.querySelectorAll(".coupon-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const code = item.getAttribute("data-code");
+      const input = document.getElementById("promo-code-input");
+      if (input) {
+        input.value = code;
+        // Auto trigger submit
+        const submitPromoBtn = document.getElementById("btn-promo-apply-submit");
+        if (submitPromoBtn) submitPromoBtn.click();
+      }
+    });
+  });
+
   // Submit promo verification (from payment screen)
   const submitPromoBtn = document.getElementById("btn-promo-apply-submit");
   if (submitPromoBtn) {
@@ -1532,7 +2046,8 @@ function initPaymentScreen() {
       const errorMsg = document.getElementById("promo-error-msg");
       const modal = document.getElementById("promo-modal-overlay");
       
-      if (input.value.trim().toUpperCase() === "UDHAYA") {
+      const codeVal = input.value.trim().toUpperCase();
+      if (codeVal === "UDHAYA" || codeVal === "FESTIVE20") {
         modal.style.display = "none";
         
         // Add to orders
@@ -1678,7 +2193,7 @@ function initAccountScreen() {
   });
   
   document.getElementById("btn-acc-help").addEventListener("click", () => {
-    showToast("Contacting customer support helpline...");
+    routeTo("screen-helpdesk");
   });
 
   // Settings click listeners
@@ -1709,7 +2224,7 @@ function initAccountScreen() {
     Store.currentUser = {
       name: "Anonymous User",
       email: "user@nexcart.com",
-      phone: "+91 9876543210",
+      phone: "+91 9090909090",
       language: "English",
       state: "Kerala",
       city: "Trivandrum",
@@ -1742,25 +2257,128 @@ function renderOrdersList() {
       const dateFormatted = new Date(order.date).toLocaleDateString("en-IN", {
         year: 'numeric', month: 'short', day: 'numeric'
       });
-      const statusLabel = order.status === "delivered" ? "Delivered" : "Processing";
+      
+      let statusLabel = "Processing";
+      let progressWidth = "0%";
+      
+      let shippedColor = "var(--bg-tertiary)";
+      let shippedTextColor = "var(--text-light)";
+      let shippedIcon = `<span style="font-size: 10px; font-weight: 800;">2</span>`;
+      let shippedLabelColor = "var(--text-light)";
+      
+      let deliveredColor = "var(--bg-tertiary)";
+      let deliveredTextColor = "var(--text-light)";
+      let deliveredIcon = `<span style="font-size: 10px; font-weight: 800;">3</span>`;
+      let deliveredLabelColor = "var(--text-light)";
+      
+      let actionButtonHTML = "";
+
+      if (order.status === "shipped") {
+        statusLabel = "Shipped";
+        progressWidth = "50%";
+        shippedColor = "var(--accent)";
+        shippedTextColor = "white";
+        shippedIcon = `<i data-lucide="truck" style="width: 12px; height: 12px;"></i>`;
+        shippedLabelColor = "var(--text-primary)";
+        actionButtonHTML = `
+          <button class="btn btn-secondary btn-simulate-status" data-order-id="${order.id}" data-next-status="delivered" style="width: auto; padding: 4px 10px; font-size: 10px; height: 26px; font-weight: 800; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px;">
+            <i data-lucide="package" style="width: 12px; height: 12px;"></i>
+            <span>Simulate Delivery</span>
+          </button>
+        `;
+      } else if (order.status === "delivered") {
+        statusLabel = "Delivered";
+        progressWidth = "100%";
+        shippedColor = "var(--accent)";
+        shippedTextColor = "white";
+        shippedIcon = `<i data-lucide="check" style="width: 12px; height: 12px;"></i>`;
+        shippedLabelColor = "var(--text-primary)";
+        
+        deliveredColor = "var(--accent)";
+        deliveredTextColor = "white";
+        deliveredIcon = `<i data-lucide="package" style="width: 12px; height: 12px;"></i>`;
+        deliveredLabelColor = "var(--text-primary)";
+      } else {
+        // processing
+        actionButtonHTML = `
+          <button class="btn btn-secondary btn-simulate-status" data-order-id="${order.id}" data-next-status="shipped" style="width: auto; padding: 4px 10px; font-size: 10px; height: 26px; font-weight: 800; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px;">
+            <i data-lucide="truck" style="width: 12px; height: 12px;"></i>
+            <span>Simulate Shipping</span>
+          </button>
+        `;
+      }
       
       return `
-        <div class="order-history-card">
-          <div class="order-card-header">
-            <span>Order ID: ${order.id} | Date: ${dateFormatted}</span>
-            <span class="order-status-chip ${order.status}">${statusLabel}</span>
+        <div class="order-history-card" style="display: flex; flex-direction: column; background: var(--bg-primary); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; gap: 12px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
+          <div class="order-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">Order ID: <strong style="color: var(--text-primary);">${order.id}</strong> | Date: ${dateFormatted}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              ${actionButtonHTML}
+              <span class="order-status-chip ${order.status}">${statusLabel}</span>
+            </div>
           </div>
           
-          <div class="order-product-row">
-            <img src="${order.image}" alt="${order.productName}" class="order-product-img">
-            <div class="order-product-details">
-              <span class="order-product-name">${order.productName}</span>
-              <span class="order-product-price">₹${order.price.toLocaleString("en-IN")}</span>
+          <div class="order-product-row" style="display: flex; gap: 14px; align-items: center;">
+            <img src="${order.image}" alt="${order.productName}" class="order-product-img" style="width: 60px; height: 60px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--border-color); padding: 4px; background: var(--bg-secondary);">
+            <div class="order-product-details" style="display: flex; flex-direction: column; gap: 4px;">
+              <span class="order-product-name" style="font-size: 13px; font-weight: 800; color: var(--text-primary);">${order.productName}</span>
+              <span class="order-product-price" style="font-size: 13px; font-weight: 700; color: var(--primary);">₹${order.price.toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+
+          <!-- Live Progress Stepper -->
+          <div class="order-tracker" style="margin-top: 6px; padding: 10px 0; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Live Order Tracking:</div>
+            <div class="tracker-steps" style="display: flex; justify-content: space-between; position: relative; margin-top: 4px;">
+              <!-- connecting progress line background -->
+              <div style="position: absolute; top: 12px; left: 16%; right: 16%; height: 3px; background-color: var(--border-color); z-index: 1;"></div>
+              <!-- active progress line color -->
+              <div style="position: absolute; top: 12px; left: 16%; width: calc(${progressWidth} * 0.68); height: 3px; background-color: var(--accent); z-index: 2; transition: width 0.4s ease;"></div>
+              
+              <!-- Step 1: Confirmed -->
+              <div class="tracker-step" style="display: flex; flex-direction: column; align-items: center; z-index: 3; flex: 1;">
+                <div style="width: 26px; height: 26px; border-radius: 50%; background-color: var(--accent); color: white; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg-primary);">
+                  <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                </div>
+                <span style="font-size: 9px; font-weight: 800; color: var(--text-primary); margin-top: 4px;">Confirmed</span>
+              </div>
+
+              <!-- Step 2: Shipped -->
+              <div class="tracker-step" style="display: flex; flex-direction: column; align-items: center; z-index: 3; flex: 1;">
+                <div style="width: 26px; height: 26px; border-radius: 50%; background-color: ${shippedColor}; color: ${shippedTextColor}; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg-primary); transition: all 0.3s ease;">
+                  ${shippedIcon}
+                </div>
+                <span style="font-size: 9px; font-weight: 800; color: ${shippedLabelColor}; margin-top: 4px;">Shipped</span>
+              </div>
+
+              <!-- Step 3: Delivered -->
+              <div class="tracker-step" style="display: flex; flex-direction: column; align-items: center; z-index: 3; flex: 1;">
+                <div style="width: 26px; height: 26px; border-radius: 50%; background-color: ${deliveredColor}; color: ${deliveredTextColor}; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg-primary); transition: all 0.3s ease;">
+                  ${deliveredIcon}
+                </div>
+                <span style="font-size: 9px; font-weight: 800; color: ${deliveredLabelColor}; margin-top: 4px;">Delivered</span>
+              </div>
             </div>
           </div>
         </div>
       `;
     }).join('');
+
+    // Attach click listeners to simulate button clicks
+    container.querySelectorAll(".btn-simulate-status").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const orderId = btn.getAttribute("data-order-id");
+        const nextStatus = btn.getAttribute("data-next-status");
+        
+        // Find order and update its status
+        const orderIndex = Store.orders.findIndex(o => o.id === orderId);
+        if (orderIndex > -1) {
+          Store.orders[orderIndex].status = nextStatus;
+          saveUserToDatabase(); // persist changes
+          renderOrdersList(); // refresh UI
+        }
+      });
+    });
   }
   
   if (window.lucide) window.lucide.createIcons();
@@ -1818,27 +2436,27 @@ function toggleWishlist(productId, element) {
 function attachProductCardEvents() {
   // Product Detail opens when card is clicked (except wishlist or quick add buttons)
   document.querySelectorAll(".product-card").forEach(card => {
-    card.addEventListener("click", (e) => {
+    card.onclick = (e) => {
       // Stop if click is inside wishlist toggle button or quick add cart button
       if (e.target.closest(".wishlist-toggle-btn") || e.target.closest(".quick-add-btn")) return;
       
       const id = card.getAttribute("data-product-id");
       openProductDetails(id);
-    });
+    };
   });
 
   // Product card wishlist buttons
   document.querySelectorAll(".wishlist-toggle-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
+    btn.onclick = (e) => {
       e.stopPropagation();
       const id = btn.getAttribute("data-product-id");
       toggleWishlist(id, btn);
-    });
+    };
   });
 
   // Product card Quick Add buttons
   document.querySelectorAll(".quick-add-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
+    btn.onclick = (e) => {
       e.stopPropagation();
       const id = btn.getAttribute("data-product-id");
       const product = PRODUCT_CATALOG.find(p => p.id === id);
@@ -1850,7 +2468,7 @@ function attachProductCardEvents() {
       addToCart(product, 1, size, color);
       showToast("Added to Cart!");
       updateBadges();
-    });
+    };
   });
 }
 
@@ -1876,13 +2494,21 @@ function initNavigationTabs() {
   });
 }
 
-// SEARCH FUNCTIONALITY
+// SEARCH FUNCTIONALITY & SUGGESTIONS DROPDOWN
 function initSearch() {
   const searchInput = document.getElementById("search-input");
+  const suggestionsBox = document.getElementById("search-suggestions-box");
   
+  if (!searchInput || !suggestionsBox) return;
+
   searchInput.addEventListener("input", (e) => {
-    const query = e.target.value.toLowerCase().trim();
+    const rawVal = e.target.value;
+    const query = rawVal.toLowerCase().trim();
+    
     if (!query) {
+      suggestionsBox.style.display = "none";
+      suggestionsBox.innerHTML = "";
+      
       // Restore default category view if cleared
       const activeTabCat = document.querySelector(".sidebar-tab.active");
       if (activeTabCat) {
@@ -1893,35 +2519,80 @@ function initSearch() {
       return;
     }
     
-    // Switch to Categories View to show search results
-    routeTo("screen-categories");
-    
-    // Clear sidebar active states
-    document.querySelectorAll(".sidebar-tab").forEach(tab => tab.classList.remove("active"));
-    
-    const title = document.getElementById("category-content-title");
-    title.textContent = `Search results for "${query}"`;
-    
+    // Find up to 5 matching products
     const matches = PRODUCT_CATALOG.filter(p => 
       p.name.toLowerCase().includes(query) || 
-      p.description.toLowerCase().includes(query) ||
       p.category.toLowerCase().includes(query)
-    );
+    ).slice(0, 5);
     
-    const gridContainer = document.getElementById("category-product-grid");
     if (matches.length > 0) {
-      gridContainer.innerHTML = matches.map(p => createProductCardHTML(p)).join('');
-    } else {
-      gridContainer.innerHTML = `
-        <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-secondary);">
-          <i data-lucide="search" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
-          <p style="font-weight: 600;">No products matched your search.</p>
+      suggestionsBox.innerHTML = matches.map(p => `
+        <div class="suggestion-item" data-id="${p.id}" style="padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-color); font-size: 12px; font-weight: 700; color: var(--text-primary); transition: background 0.2s;">
+          <img src="${p.image}" style="width: 28px; height: 28px; object-fit: contain; border-radius: 4px; background: var(--bg-secondary); padding: 2px; border: 1px solid var(--border-color);">
+          <div style="display: flex; flex-direction: column;">
+            <span>${p.name}</span>
+            <span style="font-size: 10px; color: var(--text-light); font-weight: 500;">${p.category} • ₹${p.price.toLocaleString("en-IN")}</span>
+          </div>
         </div>
-      `;
+      `).join('');
+      suggestionsBox.style.display = "block";
+      
+      // Suggestion click listener
+      suggestionsBox.querySelectorAll(".suggestion-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const pid = item.getAttribute("data-id");
+          searchInput.value = "";
+          suggestionsBox.style.display = "none";
+          openProductDetails(pid);
+          routeTo("screen-pdp");
+        });
+      });
+    } else {
+      suggestionsBox.style.display = "none";
     }
-    
-    attachProductCardEvents();
-    if (window.lucide) window.lucide.createIcons();
+  });
+
+  // Handle enter key to execute full search
+  searchInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      const query = searchInput.value.toLowerCase().trim();
+      if (!query) return; // Ignore empty queries
+      
+      suggestionsBox.style.display = "none";
+      routeTo("screen-categories");
+      document.querySelectorAll(".sidebar-tab").forEach(tab => tab.classList.remove("active"));
+      
+      const title = document.getElementById("category-content-title");
+      title.textContent = `Search results for "${query}"`;
+      
+      const matches = PRODUCT_CATALOG.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        p.description.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query)
+      );
+      
+      const gridContainer = document.getElementById("category-product-grid");
+      if (matches.length > 0) {
+        gridContainer.innerHTML = matches.map(p => createProductCardHTML(p)).join('');
+      } else {
+        gridContainer.innerHTML = `
+          <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-secondary);">
+            <i data-lucide="search" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
+            <p style="font-weight: 600;">No products matched your search.</p>
+          </div>
+        `;
+      }
+      
+      attachProductCardEvents();
+      if (window.lucide) window.lucide.createIcons();
+    }
+  });
+
+  // Click outside listener to hide suggestions
+  document.addEventListener("click", (e) => {
+    if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+      suggestionsBox.style.display = "none";
+    }
   });
 }
 
@@ -2592,8 +3263,112 @@ function initHeaderAndFAB() {
   
   // FAB customer support simulation
   document.getElementById("fab-support-btn").addEventListener("click", () => {
-    showAlert("Customer Support", "Opening Live chat support ticket... Connecting agent.", "info");
+    routeTo("screen-helpdesk");
   });
+}
+
+function initHelpdeskSystem() {
+  const backBtn = document.getElementById("btn-helpdesk-back");
+  if (backBtn) {
+    backBtn.onclick = () => {
+      routeTo("screen-account");
+    };
+  }
+
+  const form = document.getElementById("form-helpdesk-chat");
+  const input = document.getElementById("helpdesk-chat-input");
+  const chatBody = document.getElementById("helpdesk-chat-body");
+
+  function appendMessage(text, isBot) {
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${isBot ? 'bot' : 'user'}`;
+    bubble.style.alignSelf = isBot ? "flex-start" : "flex-end";
+    bubble.style.backgroundColor = isBot ? "var(--bg-primary)" : "var(--primary)";
+    bubble.style.border = isBot ? "1.5px solid var(--border-color)" : "none";
+    bubble.style.borderRadius = isBot ? "16px 16px 16px 4px" : "16px 16px 4px 16px";
+    bubble.style.padding = "12px 16px";
+    bubble.style.maxWidth = "80%";
+    bubble.style.fontSize = "12px";
+    bubble.style.fontWeight = "600";
+    bubble.style.color = isBot ? "var(--text-primary)" : "white";
+    bubble.style.lineHeight = "1.5";
+    bubble.style.boxShadow = "var(--shadow-sm)";
+    bubble.textContent = text;
+    
+    chatBody.appendChild(bubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  function getBotReply(userMsg) {
+    const msg = userMsg.toLowerCase();
+    if (msg.includes("order") || msg.includes("where")) {
+      return "You can view all order statuses on the 'My Orders' screen under the Account section. You can simulate shipping updates using the tracking stepper there!";
+    } else if (msg.includes("promo") || msg.includes("coupon") || msg.includes("code")) {
+      return "To apply a promo code, proceed to the payment stage of checkout, select 'Gift Card / Promo Coupon', and click on any available coupon card!";
+    } else if (msg.includes("track") || msg.includes("shipment")) {
+      return "Live tracking is active! Head to Account -> My Orders -> View Details to view the confirmation stepper progress bar.";
+    } else if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey")) {
+      return "Hi there! I am here to help you navigate NexCart. Ask me anything about orders, coupons, or tracking!";
+    } else {
+      return "Thank you for reaching out. A support representative will review your message shortly. In the meantime, you can check the 'My Orders' section for delivery updates!";
+    }
+  }
+
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const val = input.value.trim();
+      if (!val) return;
+      
+      appendMessage(val, false);
+      input.value = "";
+      
+      setTimeout(() => {
+        const reply = getBotReply(val);
+        appendMessage(reply, true);
+      }, 800);
+    };
+  }
+
+  // Quick reply tags click
+  document.querySelectorAll(".quick-reply-tag").forEach(tag => {
+    tag.onclick = () => {
+      const msg = tag.getAttribute("data-msg");
+      appendMessage(msg, false);
+      setTimeout(() => {
+        const reply = getBotReply(msg);
+        appendMessage(reply, true);
+      }, 800);
+    };
+  });
+}
+
+function initThemeToggle() {
+  const toggleBtn = document.getElementById("header-theme-toggle");
+  if (!toggleBtn) return;
+  
+  const savedTheme = localStorage.getItem("nexcart_theme") || "light";
+  if (savedTheme === "dark") {
+    document.body.classList.add("dark-theme");
+    toggleBtn.innerHTML = '<i data-lucide="sun"></i>';
+  } else {
+    document.body.classList.remove("dark-theme");
+    toggleBtn.innerHTML = '<i data-lucide="moon"></i>';
+  }
+  if (window.lucide) window.lucide.createIcons();
+
+  toggleBtn.onclick = () => {
+    if (document.body.classList.contains("dark-theme")) {
+      document.body.classList.remove("dark-theme");
+      localStorage.setItem("nexcart_theme", "light");
+      toggleBtn.innerHTML = '<i data-lucide="moon"></i>';
+    } else {
+      document.body.classList.add("dark-theme");
+      localStorage.setItem("nexcart_theme", "dark");
+      toggleBtn.innerHTML = '<i data-lucide="sun"></i>';
+    }
+    if (window.lucide) window.lucide.createIcons();
+  };
 }
 
 
@@ -2612,6 +3387,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initOnboarding();
   initInterests();
   initCategories();
+  initHomeScreenFilters(); // Initialize home screen filters panel
   initPDP();
   initCart();
   initCheckoutScreen();
@@ -2619,6 +3395,8 @@ window.addEventListener("DOMContentLoaded", () => {
   initAccountScreen();
   initOrdersScreen();
   initEditProfileScreen(); // Edit Profile Initializer
+  initHelpdeskSystem(); // Initialize chat support bot
+  initThemeToggle(); // Initialize dark mode theme system
   
   initNavigationTabs();
   initSearch();
@@ -2627,7 +3405,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Set badges initially
   updateBadges();
   
-  // Check active user session
+  // Check active user session (with security fallback validation check)
   const activeEmail = localStorage.getItem("nexcart_active_user");
   if (activeEmail) {
     const users = JSON.parse(localStorage.getItem("nexcart_users") || "{}");
@@ -2668,6 +3446,9 @@ window.addEventListener("DOMContentLoaded", () => {
         routeTo("screen-home");
       }
       return;
+    } else {
+      // Invalid active user token fallback check (fixes Active Session State Bug)
+      localStorage.removeItem("nexcart_active_user");
     }
   }
   

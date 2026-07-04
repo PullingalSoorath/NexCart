@@ -13,7 +13,10 @@ const ELECTRONICS_PRODUCTS = [
     rating: 4.9,
     reviews: 3204,
     trending: true,
-    image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop&q=80"
+      , "https://images.unsplash.com/photo-1709178295038-acbeec786fcf?q=80&w=627&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    ],
     description: "The ultimate flagship mobile experience. Features a Titanium aerospace frame, 120Hz LTPO OLED display, custom octa-core AI processor, and a cinematic 3x optical camera array.",
     interestGroup: "Gadgets",
     warranty: "1 Year Brand Warranty",
@@ -41,7 +44,11 @@ const ELECTRONICS_PRODUCTS = [
     rating: 4.7,
     reviews: 412,
     trending: true,
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNQi65Gr7Yyvp7klJeLVrumGd9p7MB6AV7c8LlDn2i0w&s=10",
+    images: [
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNQi65Gr7Yyvp7klJeLVrumGd9p7MB6AV7c8LlDn2i0w&s=10",
+      "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Unleash your creativity with the ZenBook OLED. An ultra-thin, all-metal workstation hosting a brilliant 2.8K display, high performance GPU, and silent cooling fans.",
     interestGroup: "Gadgets",
     warranty: "1 Year Brand Warranty",
@@ -69,7 +76,9 @@ const ELECTRONICS_PRODUCTS = [
     rating: 4.4,
     reviews: 1540,
     trending: false,
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80","https://images.unsplash.com/photo-1487215078519-e21cc028cb29?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    ],
     description: "Immersive audio with hybrid Active Noise Cancellation (ANC). Enjoy up to 40 hours of non-stop playback, premium plush memory foam earcups, and dual high-definition microphones.",
     interestGroup: "Gadgets",
     warranty: "1 Year Brand Warranty",
@@ -96,7 +105,10 @@ const ELECTRONICS_PRODUCTS = [
     rating: 4.5,
     reviews: 789,
     trending: true,
-    image: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1637945837201-7ff6c00035d4?q=80&w=736&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "https://images.unsplash.com/photo-1630327384723-518ee113cf14?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    ],
     description: "Your health, refined. Titanium watch casing equipped with continuous heart monitoring, SpO2 sensor, sleep architecture analyzer, and GPS route plotting for athletic tracking.",
     interestGroup: "Gadgets",
     warranty: "1 Year Brand Warranty",

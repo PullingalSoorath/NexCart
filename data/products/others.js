@@ -13,7 +13,9 @@ const OTHERS_PRODUCTS = [
     rating: 4.8,
     reviews: 47,
     trending: false,
-    image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500&auto=format&fit=crop&q=80","https://images.unsplash.com/photo-1618762044398-ec1e7e048bbd?q=80&w=627&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    ],
     description: "Ultralight carbon monocoque frame built for speed. Houses 22-speed microshift gearing, precision hydraulic disc brakes, and tubeless aero tires.",
     interestGroup: "Toys",
     warranty: "1 Year Brand Warranty",
@@ -39,7 +41,9 @@ const OTHERS_PRODUCTS = [
     rating: 4.6,
     reviews: 322,
     trending: true,
-    image: "https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Protect your posture with ErgoFlex. Multi-point self-adjusting lumbar mesh, 3D rotating armrests, tilt-lock gas-lift cylinder, and aluminum star base.",
     interestGroup: "Home Appliances",
     warranty: "1 Year Brand Warranty",
@@ -67,7 +71,9 @@ const OTHERS_PRODUCTS = [
     rating: 4.5,
     reviews: 18,
     trending: false,
-    image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&auto=format&fit=crop&q=80"
+    ],
     description: "Explore the intersections of quantum physics and neuroscience. A compelling exploration of how cognitive frameworks process consciousness.",
     interestGroup: "Toys",
     warranty: "Brand Authenticity Guarantee",

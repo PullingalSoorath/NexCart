@@ -34,8 +34,10 @@ PRODUCT_CATALOG.forEach(p => {
     }
   }
 
-  // 2. Image carousel — generate 3 slides from the base image
-  if (!p.images) {
+  // 2. Image carousel — Support explicit list of images, or fall back to single image
+  if (p.images && p.images.length > 0) {
+    p.image = p.images[0];
+  } else {
     p.images = [
       p.image,
       p.image + "&sig=" + p.id + "sec",

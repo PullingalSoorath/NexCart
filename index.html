@@ -35,12 +35,16 @@
             <i data-lucide="bell"></i>
             <span class="badge" id="notification-badge">3</span>
           </button>
+          <button class="icon-btn" id="header-theme-toggle" title="Toggle Dark/Light Mode">
+            <i data-lucide="moon"></i>
+          </button>
         </div>
       </div>
       <!-- Sticky Search Bar -->
-      <div class="search-container">
+      <div class="search-container" style="position: relative;">
         <i data-lucide="search" style="color: var(--text-light); width: 18px;"></i>
         <input type="text" id="search-input" class="search-input" placeholder="Search products, brands and more...">
+        <div id="search-suggestions-box" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 1000; max-height: 250px; overflow-y: auto; margin-top: 6px;"></div>
       </div>
     </header>
 
@@ -142,7 +146,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Phone Number</label>
-                <input type="tel" id="onboard-phone" class="form-input" placeholder="+91 9876543210" required>
+                <input type="tel" id="onboard-phone" class="form-input" placeholder="+91 9090909090" required>
               </div>
               <div class="form-group">
                 <label class="form-label">Preferred Language</label>
@@ -252,9 +256,69 @@
 
         <!-- Explore Catalog Section (Grid View) -->
         <div class="home-section">
-          <div class="section-header">
-            <h3 class="section-title">Explore NexCart</h3>
+          <div class="category-header-row" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 10px;">
+              <h3 class="section-title" style="margin: 0;">Explore NexCart</h3>
+              <!-- Sort Dropdown -->
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sort By</span>
+                <select id="home-sort-select" class="form-input" style="height: 34px; padding: 0 10px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm); border: 1.5px solid var(--border-color); background-color: var(--bg-primary); width: auto; min-width: 130px; cursor: pointer;">
+                  <option value="default">Relevance</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="rating">Top Rated</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Filter Panel Toggle & Controls Row -->
+            <div style="display: flex; flex-direction: column; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="btn-home-toggle-filters">
+                <span style="font-size: 12px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="sliders-horizontal" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                  <span>Filter Products</span>
+                </span>
+                <span style="font-size: 11px; font-weight: 700; color: var(--primary);" id="lbl-home-active-filters-count">All Products</span>
+              </div>
+              
+              <!-- Filter content, expandable -->
+              <div id="home-filters-content" style="display: flex; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 2px;">
+                <!-- Price Range Filter -->
+                <div style="flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Max Price: <span id="lbl-home-max-price-filter" style="color: var(--primary); font-weight: 800;">₹1,30,000</span></label>
+                  <input type="range" id="home-filter-price-slider" min="0" max="130000" step="500" value="130000" style="accent-color: var(--primary); cursor: pointer; height: 6px; border-radius: 3px; background: var(--border-color); outline: none;">
+                  <div style="display: flex; justify-content: space-between; font-size: 9px; font-weight: 700; color: var(--text-light);">
+                    <span>₹0</span>
+                    <span>₹1,30,000</span>
+                  </div>
+                </div>
+
+                <!-- Star Rating Filter -->
+                <div style="min-width: 130px; display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Rating</label>
+                  <div style="display: flex; gap: 6px;">
+                    <button class="rating-filter-chip home-rating-filter-chip active" data-rating="0">
+                      All
+                    </button>
+                    <button class="rating-filter-chip home-rating-filter-chip" data-rating="4">
+                      4★ +
+                    </button>
+                    <button class="rating-filter-chip home-rating-filter-chip" data-rating="4.5">
+                      4.5★ +
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Reset Filters Button -->
+                <div style="display: flex; align-items: flex-end;">
+                  <button class="btn btn-secondary btn-sm" id="btn-home-reset-filters" style="height: 32px; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); border: 1px solid var(--border-color); width: auto;">
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
+
           <div class="product-grid" id="home-product-grid">
             <!-- Dynamic product cards in grid layout populated by app.js -->
           </div>
@@ -271,7 +335,69 @@
 
           <!-- Right Grid Main Area -->
           <section class="category-main-content">
-            <div class="category-header" id="category-content-title">Fashion</div>
+            <div class="category-header-row" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 10px;">
+                <div class="category-header" id="category-content-title" style="margin-bottom: 0;">Fashion</div>
+                <!-- Sort Dropdown -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sort By</span>
+                  <select id="category-sort-select" class="form-input" style="height: 34px; padding: 0 10px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm); border: 1.5px solid var(--border-color); background-color: var(--bg-primary); width: auto; min-width: 130px; cursor: pointer;">
+                    <option value="default">Relevance</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Filter Panel Toggle & Controls Row -->
+              <div style="display: flex; flex-direction: column; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="btn-toggle-filters">
+                  <span style="font-size: 12px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="sliders-horizontal" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                    <span>Filter Products</span>
+                  </span>
+                  <span style="font-size: 11px; font-weight: 700; color: var(--primary);" id="lbl-active-filters-count">All Products</span>
+                </div>
+                
+                <!-- Filter content, expandable -->
+                <div id="category-filters-content" style="display: flex; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 2px;">
+                  <!-- Price Range Filter -->
+                  <div style="flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Max Price: <span id="lbl-max-price-filter" style="color: var(--primary); font-weight: 800;">₹1,30,000</span></label>
+                    <input type="range" id="filter-price-slider" min="0" max="130000" step="500" value="130000" style="accent-color: var(--primary); cursor: pointer; height: 6px; border-radius: 3px; background: var(--border-color); outline: none;">
+                    <div style="display: flex; justify-content: space-between; font-size: 9px; font-weight: 700; color: var(--text-light);">
+                      <span>₹0</span>
+                      <span>₹1,30,000</span>
+                    </div>
+                  </div>
+
+                  <!-- Star Rating Filter -->
+                  <div style="min-width: 130px; display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Rating</label>
+                    <div style="display: flex; gap: 6px;">
+                      <button class="rating-filter-chip active" data-rating="0">
+                        All
+                      </button>
+                      <button class="rating-filter-chip" data-rating="4">
+                        4★ +
+                      </button>
+                      <button class="rating-filter-chip" data-rating="4.5">
+                        4.5★ +
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Reset Filters Button -->
+                  <div style="display: flex; align-items: flex-end;">
+                    <button class="btn btn-secondary btn-sm" id="btn-reset-filters" style="height: 32px; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); border: 1px solid var(--border-color); width: auto;">
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="product-grid" id="category-product-grid">
               <!-- Grid cards populated by app.js -->
             </div>
@@ -441,6 +567,67 @@
             </div>
 
           </div> <!-- Three column container end -->
+
+          <!-- Product Specifications Table -->
+          <div id="pdp-specs-section" style="border-top: 1px solid var(--border-color); padding: 24px 20px; background-color: var(--bg-primary);">
+            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">Technical Specifications</h3>
+            <div id="pdp-specs-table-container" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+              <!-- Dynamic spec rows -->
+            </div>
+          </div>
+
+          <!-- Product Reviews & Ratings (Write a Review Form) -->
+          <div style="border-top: 1px solid var(--border-color); padding: 24px 20px; background-color: var(--bg-primary); display: grid; grid-template-columns: 1fr; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin: 0;">Customer Reviews</h3>
+              <div style="display: flex; align-items: center; gap: 8px;" id="pdp-reviews-summary-row">
+                <!-- Stars & value -->
+              </div>
+            </div>
+
+            <!-- Double Column layout: Left (List of reviews), Right (Write a Review Form) -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 24px;" id="pdp-reviews-split-layout">
+              <!-- Left Column: Reviews List -->
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="font-size: 13px; font-weight: 800; color: var(--text-secondary);">Top Reviews</div>
+                <div id="pdp-reviews-list" style="display: flex; flex-direction: column; gap: 14px;">
+                  <!-- Dynamic reviews go here -->
+                </div>
+              </div>
+              
+              <!-- Right Column: Write a Review Form -->
+              <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                <h4 style="font-size: 14px; font-weight: 800; color: var(--text-primary); margin: 0;">Write a Customer Review</h4>
+                <form id="form-pdp-add-review" onsubmit="return false;" style="display: flex; flex-direction: column; gap: 12px;">
+                  <div class="form-group">
+                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Your Name</label>
+                    <input type="text" id="pdp-review-name-input" class="form-input" style="height: 38px;" required placeholder="e.g. John Doe">
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Select Rating</label>
+                    <div style="display: flex; gap: 6px; font-size: 18px; color: var(--text-light); cursor: pointer;" id="pdp-review-rating-stars">
+                      <i class="review-star-select" data-rating="1" data-lucide="star" style="width: 20px; height: 20px;"></i>
+                      <i class="review-star-select" data-rating="2" data-lucide="star" style="width: 20px; height: 20px;"></i>
+                      <i class="review-star-select" data-rating="3" data-lucide="star" style="width: 20px; height: 20px;"></i>
+                      <i class="review-star-select" data-rating="4" data-lucide="star" style="width: 20px; height: 20px;"></i>
+                      <i class="review-star-select" data-rating="5" data-lucide="star" style="width: 20px; height: 20px;"></i>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Your Review</label>
+                    <textarea id="pdp-review-text-input" class="form-input" style="min-height: 80px; padding: 10px;" required placeholder="What did you like or dislike about this product?"></textarea>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 6px; width: 100%;">
+                    <span>Submit Review</span>
+                    <i data-lucide="send" style="width: 14px;"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
 
           <!-- Browsing History Carousel (Full-width section at bottom) -->
           <div class="browsing-history-section"
@@ -898,6 +1085,53 @@
         </div>
       </div>
 
+      <!-- 14. HELPDESK SUPPORT CHAT SCREEN -->
+      <div id="screen-helpdesk" class="screen-view" style="display: none; flex-direction: column; overflow: hidden; height: 100%;">
+        <div class="view-header" style="border-bottom: 1px solid var(--border-color); background-color: var(--bg-primary); padding: 16px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+          <button class="icon-btn pdp-back-btn" id="btn-helpdesk-back" title="Go back">
+            <i data-lucide="arrow-left"></i>
+          </button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;">NC</div>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 13px; font-weight: 800; color: var(--text-primary);">NexCart Assistant</span>
+              <span style="font-size: 10px; color: var(--accent-hover); font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--accent); display: inline-block;"></span>
+                <span>Online & Ready</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="helpdesk-chat-body" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; background-color: var(--bg-secondary);">
+          <div class="chat-bubble bot" style="align-self: flex-start; background-color: var(--bg-primary); border: 1.5px solid var(--border-color); border-radius: 16px 16px 16px 4px; padding: 12px 16px; max-width: 80%; font-size: 12px; font-weight: 500; color: var(--text-primary); line-height: 1.5; box-shadow: var(--shadow-sm);">
+            Hello! I am your virtual shopping assistant. How can I help you today?
+          </div>
+        </div>
+
+        <!-- Suggestion quick replies tags -->
+        <div style="padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; background-color: var(--bg-primary); border-top: 1px solid var(--border-color); flex-shrink: 0; scrollbar-width: none;">
+          <button class="quick-reply-tag" data-msg="Where is my order?" style="white-space: nowrap; padding: 6px 12px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--bg-secondary); font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+            Where is my order?
+          </button>
+          <button class="quick-reply-tag" data-msg="How to apply promo code?" style="white-space: nowrap; padding: 6px 12px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--bg-secondary); font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+            How to apply promo code?
+          </button>
+          <button class="quick-reply-tag" data-msg="Track my shipment" style="white-space: nowrap; padding: 6px 12px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--bg-secondary); font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+            Track my shipment
+          </button>
+        </div>
+
+        <!-- Footer Input Bar -->
+        <form id="form-helpdesk-chat" style="padding: 12px 16px; border-top: 1px solid var(--border-color); background-color: var(--bg-primary); display: flex; gap: 10px; align-items: center; flex-shrink: 0; margin-bottom: 0;">
+          <input type="text" id="helpdesk-chat-input" class="form-input" style="height: 42px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500;" required placeholder="Type your message here...">
+          <button type="submit" class="btn btn-primary" style="width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0;">
+            <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+          </button>
+        </form>
+      </div>
+
     </main>
 
     <!-- Support FAB Floating Button -->
@@ -1015,6 +1249,29 @@
             <i data-lucide="x" style="width: 18px; height: 18px;"></i>
           </button>
         </div>
+        
+        <!-- Coupons picker list -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Available Coupons (Click to select)</span>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="coupon-item" data-code="UDHAYA" style="border: 1.5px dashed var(--accent); background: var(--accent-light); border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 800; color: var(--accent-hover);">UDHAYA</span>
+                <span style="font-size: 10px; color: var(--text-secondary);">Get Flat ₹2,000 off!</span>
+              </div>
+              <span style="font-size: 10px; font-weight: 700; color: var(--accent);">TAP</span>
+            </div>
+            
+            <div class="coupon-item" data-code="FESTIVE20" style="border: 1.5px dashed var(--primary); background: var(--primary-light); border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 12px; font-weight: 800; color: var(--primary-hover);">FESTIVE20</span>
+                <span style="font-size: 10px; color: var(--text-secondary);">20% discount on cart!</span>
+              </div>
+              <span style="font-size: 10px; font-weight: 700; color: var(--primary);">TAP</span>
+            </div>
+          </div>
+        </div>
+
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Enter Promo Code</label>
           <input type="text" id="promo-code-input" class="form-input" style="height: 42px;"
@@ -1023,6 +1280,7 @@
             style="color: var(--danger); font-size: 12px; font-weight: 700; display: none; margin-top: 4px;">Promo not
             found</div>
         </div>
+        
         <button class="btn btn-primary" id="btn-promo-apply-submit" style="width: 100%;">
           <span>Apply Code</span>
           <i data-lucide="check" style="width: 18px;"></i>

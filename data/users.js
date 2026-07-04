@@ -13,7 +13,7 @@ const Store = {
   currentUser: {
     name: "Anonymous User",
     email: "user@nexcart.com",
-    phone: "+91 9876543210",
+    phone: "+91 9090909090",
     language: "English",
     state: "Kerala",
     city: "Trivandrum",
