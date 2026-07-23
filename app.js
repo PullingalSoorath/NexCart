@@ -10,11 +10,19 @@
 //   data/config.js             → BANNER_SLIDES, INTEREST_CATEGORIES, CATEGORY_TABS
 //   data/users.js              → Store, saveUserToDatabase, loadActiveUserSession, etc.
 
+// Global chart references for destruction on reload
+let chartCategoryReviews = null;
+let chartSalesTrend = null;
+
 
 // --- PAGE ROUTER SYSTEM ---
 // --- 3. PAGE ROUTER SYSTEM ---
-function routeTo(screenId) {
+function routeTo(screenId, ignoreHistory = false) {
   console.log(`Routing to: ${screenId}`);
+  
+  if (!ignoreHistory) {
+    window.history.pushState({ screenId: screenId }, "", "#" + screenId);
+  }
   
   // Clear PDP slider timer when leaving PDP
   if (screenId !== "screen-pdp" && typeof pdpCarouselInterval !== "undefined" && pdpCarouselInterval) {
@@ -281,6 +289,9 @@ function createProductCardHTML(product) {
       <button class="wishlist-toggle-btn ${isWishlisted ? 'active' : ''}" data-product-id="${product.id}">
         <i data-lucide="heart" style="width: 16px; height: 16px; ${isWishlisted ? 'fill: currentColor;' : ''}"></i>
       </button>
+      <button class="share-toggle-btn" data-product-id="${product.id}" style="position: absolute; top: 48px; right: 10px; width: 32px; height: 32px; border-radius: 50%; background-color: var(--bg-primary); border: none; box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; color: var(--text-secondary); transition: var(--transition-fast);">
+        <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
+      </button>
       <div class="product-img-wrap">
         <img src="${product.image}" alt="${product.name}" class="product-img" loading="lazy">
       </div>
@@ -396,6 +407,9 @@ function initUserDatabase() {
     };
     localStorage.setItem("nexcart_users", JSON.stringify(users));
   }
+  
+  // Initialize normalized relational DBMS tables
+  initRelationalTables();
 }
 
 // AUTH SCREEN CONTROLS
@@ -1637,7 +1651,74 @@ function initPDP() {
     const id = wishBtn.getAttribute("data-product-id");
     toggleWishlist(id, wishBtn);
   });
+
+  // PDP Navbar Share Button
+  document.getElementById("btn-pdp-share").addEventListener("click", () => {
+    const id = wishBtn.getAttribute("data-product-id");
+    shareProduct(id);
+  });
   
+}
+
+// Relational DB Order Placement Helper
+function placeOrderInRelationalDB(orderId, itemsToOrder, promoCode = "None", discountAmount = 0) {
+  const orders = JSON.parse(localStorage.getItem("nexcart_orders") || "[]");
+  const orderItems = JSON.parse(localStorage.getItem("nexcart_order_items") || "[]");
+  
+  // Calculate total amount
+  const itemTotal = itemsToOrder.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const totalAmount = Math.max(itemTotal - discountAmount, 0);
+
+  // 1. Insert into nexcart_orders
+  const newOrder = {
+    id: orderId,
+    user_email: Store.currentUser.email,
+    date: new Date().toISOString().split('T')[0],
+    total_amount: totalAmount,
+    promo_code: promoCode,
+    discount: discountAmount,
+    status: "processing"
+  };
+  orders.unshift(newOrder);
+  localStorage.setItem("nexcart_orders", JSON.stringify(orders));
+
+  // 2. Insert into nexcart_order_items
+  itemsToOrder.forEach((item, index) => {
+    const newOrderItem = {
+      id: `oi-${orderId}-${index}`,
+      order_id: orderId,
+      product_id: item.product.id,
+      quantity: item.quantity,
+      price_per_unit: item.product.price,
+      size: item.size || "",
+      color: item.color || ""
+    };
+    orderItems.push(newOrderItem);
+  });
+  localStorage.setItem("nexcart_order_items", JSON.stringify(orderItems));
+  
+  // 3. Subtract product stock in nexcart_products (Inventory Adjustment!)
+  const products = JSON.parse(localStorage.getItem("nexcart_products") || "[]");
+  itemsToOrder.forEach(item => {
+    const prodIdx = products.findIndex(p => p.id === item.product.id);
+    if (prodIdx > -1) {
+      if (products[prodIdx].stock === undefined) {
+        products[prodIdx].stock = 50; // default initial stock
+      }
+      products[prodIdx].stock = Math.max(products[prodIdx].stock - item.quantity, 0);
+    }
+  });
+  localStorage.setItem("nexcart_products", JSON.stringify(products));
+
+  // Sync memory catalog
+  if (typeof PRODUCT_CATALOG !== "undefined") {
+    products.forEach(p => {
+      const idx = PRODUCT_CATALOG.findIndex(pc => pc.id === p.id);
+      if (idx > -1) {
+        PRODUCT_CATALOG[idx].stock = p.stock;
+      }
+    });
+  }
 }
 
 // CART & CHECKOUT CONTROLS
@@ -1681,7 +1762,7 @@ function updateCartQuantity(cartIndex, change) {
     Store.cart.splice(cartIndex, 1);
     showToast("Item removed from Cart");
   }
-  
+  saveUserToDatabase();
   renderCartScreen();
   updateBadges();
 }
@@ -1689,6 +1770,7 @@ function updateCartQuantity(cartIndex, change) {
 function removeCartItem(cartIndex) {
   Store.cart.splice(cartIndex, 1);
   showToast("Item removed from Cart");
+  saveUserToDatabase();
   renderCartScreen();
   updateBadges();
 }
@@ -2058,18 +2140,23 @@ function initPaymentScreen() {
           itemsToOrder = [...Store.cart];
         }
         const newOrderId = `NX-${Math.floor(1000 + Math.random() * 9000)}-2026`;
-        itemsToOrder.forEach(item => {
-          Store.orders.unshift({
-            id: newOrderId,
-            date: new Date().toISOString().split('T')[0],
-            productName: item.product.name,
-            image: item.product.image,
-            price: item.product.price * item.quantity,
-            status: "processing"
-          });
-        });
         
-        Store.cart = [];
+        // Calculate dynamic discounts
+        const itemTotal = itemsToOrder.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        let discountVal = 0;
+        if (codeVal === "UDHAYA") {
+          discountVal = 2000;
+        } else if (codeVal === "FESTIVE20") {
+          discountVal = Math.round(itemTotal * 0.2);
+        }
+
+        // Place order in relational tables
+        placeOrderInRelationalDB(newOrderId, itemsToOrder, codeVal, discountVal);
+        
+        // Empty memory cart
+        if (!Store.checkoutSingleItem) {
+          Store.cart = [];
+        }
         Store.checkoutSingleItem = null;
         updateBadges();
         saveUserToDatabase();
@@ -2110,16 +2197,8 @@ function initPaymentScreen() {
       
       const newOrderId = `NX-${Math.floor(1000 + Math.random() * 9000)}-2026`;
       
-      itemsToOrder.forEach(item => {
-        Store.orders.unshift({
-          id: newOrderId,
-          date: new Date().toISOString().split('T')[0],
-          productName: item.product.name,
-          image: item.product.image,
-          price: item.product.price * item.quantity,
-          status: "processing"
-        });
-      });
+      // Place order in relational tables
+      placeOrderInRelationalDB(newOrderId, itemsToOrder, "None", 0);
       
       // Clear Cart if not checkout single item
       if (!Store.checkoutSingleItem) {
@@ -2234,7 +2313,6 @@ function initAccountScreen() {
     };
     Store.cart = [];
     Store.wishlist.clear();
-    updateBadges();
     showAlert("Logged Out", "You have been safely signed out.", "info", () => {
       routeTo("screen-auth");
     });
@@ -2244,8 +2322,9 @@ function initAccountScreen() {
 // ORDERS SUB-PAGE
 function renderOrdersList() {
   const container = document.getElementById("orders-items-container");
+  const userOrders = getOrdersByUser(Store.currentUser.email);
   
-  if (Store.orders.length === 0) {
+  if (userOrders.length === 0) {
     container.innerHTML = `
       <div style="padding: 60px 20px; text-align: center; color: var(--text-secondary);">
         <i data-lucide="package" style="width: 48px; height: 48px; stroke-width: 1.5px; color: var(--text-light); margin-bottom: 8px;"></i>
@@ -2253,7 +2332,7 @@ function renderOrdersList() {
       </div>
     `;
   } else {
-    container.innerHTML = Store.orders.map(order => {
+    container.innerHTML = userOrders.map(order => {
       const dateFormatted = new Date(order.date).toLocaleDateString("en-IN", {
         year: 'numeric', month: 'short', day: 'numeric'
       });
@@ -2312,7 +2391,11 @@ function renderOrdersList() {
         <div class="order-history-card" style="display: flex; flex-direction: column; background: var(--bg-primary); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; gap: 12px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
           <div class="order-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
             <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">Order ID: <strong style="color: var(--text-primary);">${order.id}</strong> | Date: ${dateFormatted}</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button class="btn btn-secondary btn-view-invoice" data-order-id="${order.id}" style="width: auto; padding: 4px 10px; font-size: 10px; height: 26px; font-weight: 800; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--primary-light); color: var(--primary);">
+                <i data-lucide="receipt" style="width: 12px; height: 12px;"></i>
+                <span>Invoice</span>
+              </button>
               ${actionButtonHTML}
               <span class="order-status-chip ${order.status}">${statusLabel}</span>
             </div>
@@ -2325,7 +2408,7 @@ function renderOrdersList() {
               <span class="order-product-price" style="font-size: 13px; font-weight: 700; color: var(--primary);">₹${order.price.toLocaleString("en-IN")}</span>
             </div>
           </div>
-
+ 
           <!-- Live Progress Stepper -->
           <div class="order-tracker" style="margin-top: 6px; padding: 10px 0; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
             <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Live Order Tracking:</div>
@@ -2342,7 +2425,7 @@ function renderOrdersList() {
                 </div>
                 <span style="font-size: 9px; font-weight: 800; color: var(--text-primary); margin-top: 4px;">Confirmed</span>
               </div>
-
+ 
               <!-- Step 2: Shipped -->
               <div class="tracker-step" style="display: flex; flex-direction: column; align-items: center; z-index: 3; flex: 1;">
                 <div style="width: 26px; height: 26px; border-radius: 50%; background-color: ${shippedColor}; color: ${shippedTextColor}; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg-primary); transition: all 0.3s ease;">
@@ -2350,7 +2433,7 @@ function renderOrdersList() {
                 </div>
                 <span style="font-size: 9px; font-weight: 800; color: ${shippedLabelColor}; margin-top: 4px;">Shipped</span>
               </div>
-
+ 
               <!-- Step 3: Delivered -->
               <div class="tracker-step" style="display: flex; flex-direction: column; align-items: center; z-index: 3; flex: 1;">
                 <div style="width: 26px; height: 26px; border-radius: 50%; background-color: ${deliveredColor}; color: ${deliveredTextColor}; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg-primary); transition: all 0.3s ease;">
@@ -2363,25 +2446,178 @@ function renderOrdersList() {
         </div>
       `;
     }).join('');
-
+ 
     // Attach click listeners to simulate button clicks
     container.querySelectorAll(".btn-simulate-status").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const orderId = btn.getAttribute("data-order-id");
         const nextStatus = btn.getAttribute("data-next-status");
         
-        // Find order and update its status
-        const orderIndex = Store.orders.findIndex(o => o.id === orderId);
+        // Find order and update its status inside nexcart_orders
+        const orders = JSON.parse(localStorage.getItem("nexcart_orders") || "[]");
+        const orderIndex = orders.findIndex(o => o.id === orderId);
         if (orderIndex > -1) {
-          Store.orders[orderIndex].status = nextStatus;
-          saveUserToDatabase(); // persist changes
+          orders[orderIndex].status = nextStatus;
+          localStorage.setItem("nexcart_orders", JSON.stringify(orders));
           renderOrdersList(); // refresh UI
         }
+      });
+    });
+
+    // Attach click listeners to view invoice modal
+    container.querySelectorAll(".btn-view-invoice").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const orderId = btn.getAttribute("data-order-id");
+        openInvoiceModal(orderId);
       });
     });
   }
   
   if (window.lucide) window.lucide.createIcons();
+}
+
+// ── Invoice Dialog Modal Render Function (jsPDF to New Tab) ──
+function openInvoiceModal(orderId) {
+  const invoice = getOrderInvoiceSummary(orderId);
+  if (!invoice) {
+    showToast("Invoice data not found!", "error");
+    return;
+  }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
+
+    // Brand theme styling palette
+    const primaryColor = [79, 70, 229]; // #4f46e5 (Indigo)
+    const secondaryColor = [71, 85, 105]; // #475569
+    const lightGray = [241, 245, 249]; // #f1f5f9
+    const darkGray = [30, 41, 59]; // #1e293b
+
+    // Document header background band
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 35, "F");
+
+    // Corporate Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("NexCart E-Commerce", 15, 22);
+
+    // Document Designation
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.text("TAX INVOICE", 150, 22);
+
+    // Reset fonts for customer/billing section
+    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Invoice Metadata:", 15, 48);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Invoice ID:  ${invoice.order_id}`, 15, 54);
+    doc.text(`Order Date:  ${invoice.order_date}`, 15, 60);
+    doc.text(`Status:      ${invoice.order_status.toUpperCase()}`, 15, 66);
+
+    // Billed to Info
+    doc.setFont("helvetica", "bold");
+    doc.text("Billed To (Customer):", 120, 48);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name:    ${invoice.customer.name}`, 120, 54);
+    doc.text(`Email:   ${invoice.customer.email}`, 120, 60);
+    doc.text(`Phone:   ${invoice.customer.phone}`, 120, 66);
+    
+    // Split long addresses cleanly
+    const addressStr = `${invoice.customer.address}, ${invoice.customer.city}, ${invoice.customer.state} - ${invoice.customer.pincode}`;
+    const wrappedAddr = doc.splitTextToSize(addressStr, 75);
+    doc.text("Address: ", 120, 72);
+    doc.text(wrappedAddr, 138, 72);
+
+    // Section line divider
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, 88, 195, 88);
+
+    // Table Header Row Background
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(15, 94, 180, 8, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Product Item Name", 18, 99);
+    doc.text("Qty", 120, 99, { align: "center" });
+    doc.text("Unit Price", 155, 99, { align: "right" });
+    doc.text("Subtotal", 190, 99, { align: "right" });
+
+    // Table Rows Render
+    let itemY = 108;
+    doc.setFont("helvetica", "normal");
+
+    invoice.items.forEach(item => {
+      if (itemY > 260) {
+        doc.addPage();
+        itemY = 20;
+      }
+      
+      const itemNameTrunc = item.product_name.length > 50 ? item.product_name.substring(0, 47) + "..." : item.product_name;
+      doc.text(itemNameTrunc, 18, itemY);
+      doc.text(item.quantity.toString(), 120, itemY, { align: "center" });
+      doc.text(`INR ${item.price_per_unit.toLocaleString("en-IN")}`, 155, itemY, { align: "right" });
+      doc.text(`INR ${item.subtotal.toLocaleString("en-IN")}`, 190, itemY, { align: "right" });
+
+      doc.setDrawColor(241, 245, 249);
+      doc.line(15, itemY + 2, 195, itemY + 2);
+      itemY += 10;
+    });
+
+    // Total section details
+    itemY += 2;
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, itemY, 195, itemY);
+
+    itemY += 8;
+    doc.setFont("helvetica", "bold");
+    doc.text("Promo Code Applied:", 120, itemY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.promo_code, 190, itemY, { align: "right" });
+
+    itemY += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text("Discount Applied:", 120, itemY);
+    doc.setFont("helvetica", "normal");
+    doc.text(`- INR ${invoice.discount.toLocaleString("en-IN")}`, 190, itemY, { align: "right" });
+
+    itemY += 8;
+    // Final payable background box
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(115, itemY - 5, 80, 9, "F");
+    
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFontSize(11);
+    doc.text("Total Payable:", 120, itemY + 1);
+    doc.text(`INR ${invoice.total_amount.toLocaleString("en-IN")}`, 190, itemY + 1, { align: "right" });
+
+    // Footer note
+    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Thank you for choosing NexCart! This document is a system-generated relational invoice.", 105, 285, { align: "center" });
+
+    // Output Blob and Open
+    const pdfBlob = doc.output("blob");
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, "_blank");
+    showToast("Invoice PDF generated and opened in new tab!", "success");
+  } catch (err) {
+    console.error("PDF generation failed:", err);
+    showToast("Could not generate PDF: " + err.message, "error");
+  }
 }
 
 function initOrdersScreen() {
@@ -2392,6 +2628,37 @@ function initOrdersScreen() {
 
 
 // --- 6. EVENT ATTACHMENTS & INTERACTION HANDLERS ---
+
+function shareProduct(productId) {
+  const products = getProducts();
+  const prod = products.find(p => p.id === productId);
+  if (!prod) return;
+
+  const shareUrl = window.location.origin + window.location.pathname + "?product=" + productId;
+  const shareTitle = `Check out this ${prod.name} on NexCart!`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: shareTitle,
+      text: `Look at this amazing ${prod.name} at ₹${prod.price.toLocaleString("en-IN")}`,
+      url: shareUrl
+    }).then(() => {
+      showToast("Shared successfully!", "success");
+    }).catch(err => {
+      copyShareLinkToClipboard(shareUrl);
+    });
+  } else {
+    copyShareLinkToClipboard(shareUrl);
+  }
+}
+
+function copyShareLinkToClipboard(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    showToast("Product link copied to clipboard!", "success");
+  }).catch(err => {
+    showToast("Could not copy link!", "error");
+  });
+}
 
 function toggleWishlist(productId, element) {
   const isWish = Store.wishlist.has(productId);
@@ -2434,11 +2701,11 @@ function toggleWishlist(productId, element) {
 }
 
 function attachProductCardEvents() {
-  // Product Detail opens when card is clicked (except wishlist or quick add buttons)
+  // Product Detail opens when card is clicked (except wishlist, share or quick add buttons)
   document.querySelectorAll(".product-card").forEach(card => {
     card.onclick = (e) => {
-      // Stop if click is inside wishlist toggle button or quick add cart button
-      if (e.target.closest(".wishlist-toggle-btn") || e.target.closest(".quick-add-btn")) return;
+      // Stop if click is inside wishlist toggle button, share button, or quick add cart button
+      if (e.target.closest(".wishlist-toggle-btn") || e.target.closest(".quick-add-btn") || e.target.closest(".share-toggle-btn")) return;
       
       const id = card.getAttribute("data-product-id");
       openProductDetails(id);
@@ -2451,6 +2718,15 @@ function attachProductCardEvents() {
       e.stopPropagation();
       const id = btn.getAttribute("data-product-id");
       toggleWishlist(id, btn);
+    };
+  });
+
+  // Product card share buttons
+  document.querySelectorAll(".share-toggle-btn").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-product-id");
+      shareProduct(id);
     };
   });
 
@@ -3397,6 +3673,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initEditProfileScreen(); // Edit Profile Initializer
   initHelpdeskSystem(); // Initialize chat support bot
   initThemeToggle(); // Initialize dark mode theme system
+  initAdminDashboard(); // Initialize relational Admin Dashboard system
   
   initNavigationTabs();
   initSearch();
@@ -3458,5 +3735,582 @@ window.addEventListener("DOMContentLoaded", () => {
   // Route to auth screen if no active session
   routeTo("screen-auth");
 });
+
+// ============================================================
+// ADMIN RELATIONAL DASHBOARD CONTROLLER MODULE
+// ============================================================
+
+function renderAdminKPIs() {
+  const analytics = getAdminAnalytics();
+  document.getElementById("admin-kpi-revenue").textContent = `₹${analytics.totalRevenue.toLocaleString("en-IN")}`;
+  document.getElementById("admin-kpi-orders").textContent = analytics.totalOrders;
+
+  // Render Category Breakdown (GROUP BY)
+  const catContainer = document.getElementById("admin-category-breakdown");
+  catContainer.innerHTML = Object.entries(analytics.categoryRevenue).map(([cat, rev]) => `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-color);">
+      <span style="font-weight: 700; color: var(--text-primary);">${cat}</span>
+      <span style="font-weight: 700; color: var(--primary);">₹${rev.toLocaleString("en-IN")}</span>
+    </div>
+  `).join('');
+
+  // Render Top 5 Best Sellers
+  const sellersContainer = document.getElementById("admin-best-sellers");
+  if (analytics.topProducts.length === 0) {
+    sellersContainer.innerHTML = `<div style="color: var(--text-light); text-align: center; padding: 10px;">No transaction history yet.</div>`;
+  } else {
+    sellersContainer.innerHTML = analytics.topProducts.map(p => `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <img src="${p.image}" alt="" style="width: 24px; height: 24px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary);">
+          <span style="font-weight: 700; color: var(--text-primary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</span>
+        </div>
+        <span style="font-weight: 800; color: var(--accent-hover);">${p.sold} units</span>
+      </div>
+    `).join('');
+  }
+
+  // ── 1. Category Reviews (Circular Graph) ──
+  const products = getProducts();
+  const cats = getCategories();
+  const categoryReviews = {};
+  cats.forEach(c => { categoryReviews[c.name] = 0; });
+  products.forEach(p => {
+    const cat = p.category;
+    if (categoryReviews[cat] === undefined) {
+      categoryReviews[cat] = 0;
+    }
+    categoryReviews[cat] += (p.reviews || 0);
+  });
+
+  const reviewsCanvas = document.getElementById("chart-admin-category-reviews");
+  if (reviewsCanvas) {
+    if (chartCategoryReviews) {
+      chartCategoryReviews.destroy();
+    }
+    
+    const labels = Object.keys(categoryReviews);
+    const data = Object.values(categoryReviews);
+    const isDark = document.body.classList.contains("dark-theme");
+    const textColor = isDark ? "#ffffff" : "#1e1e1e";
+
+    chartCategoryReviews = new Chart(reviewsCanvas, {
+      type: "doughnut",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: [
+            "#6366f1", "#10b981", "#ef4444", "#f59e0b", 
+            "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#f43f5e"
+          ],
+          borderWidth: isDark ? 2 : 1,
+          borderColor: isDark ? "#121222" : "#ffffff"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: textColor,
+              font: { size: 9, weight: "bold", family: "'Plus Jakarta Sans', sans-serif" },
+              boxWidth: 8
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ── 2. Monthly and Yearly Sales Breakdown Details ──
+  const orders = JSON.parse(localStorage.getItem("nexcart_orders") || "[]");
+  const monthlySales = {};
+  const yearlySales = {};
+
+  orders.forEach(o => {
+    if (!o.date) return;
+    const parts = o.date.split("-");
+    if (parts.length < 2) return;
+    const year = parts[0];
+    const month = parts[1];
+    const yearMonth = `${year}-${month}`;
+
+    if (!monthlySales[yearMonth]) {
+      monthlySales[yearMonth] = { count: 0, revenue: 0, year: year };
+    }
+    monthlySales[yearMonth].count++;
+    monthlySales[yearMonth].revenue += o.total_amount;
+
+    if (!yearlySales[year]) {
+      yearlySales[year] = 0;
+    }
+    yearlySales[year] += o.total_amount;
+  });
+
+  const breakdownRows = [];
+  const sortedPeriods = Object.keys(monthlySales).sort();
+  
+  sortedPeriods.forEach(period => {
+    const data = monthlySales[period];
+    const yearlyTotal = yearlySales[data.year] || 1;
+    const percent = ((data.revenue / yearlyTotal) * 100).toFixed(1);
+    breakdownRows.push({
+      period: period,
+      count: data.count,
+      revenue: data.revenue,
+      percentage: percent
+    });
+  });
+
+  const salesTableBody = document.getElementById("admin-sales-breakdown-body");
+  if (salesTableBody) {
+    if (breakdownRows.length === 0) {
+      salesTableBody.innerHTML = `<tr><td colspan="4" style="padding: 16px; text-align: center; color: var(--text-light);">No sales transactions available.</td></tr>`;
+    } else {
+      salesTableBody.innerHTML = breakdownRows.map(row => `
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 10px 12px; font-weight: 700; color: var(--text-primary);">${row.period}</td>
+          <td style="padding: 10px 12px; text-align: center; color: var(--text-secondary); font-weight: 700;">${row.count}</td>
+          <td style="padding: 10px 12px; text-align: right; color: var(--primary); font-weight: 800;">₹${row.revenue.toLocaleString("en-IN")}</td>
+          <td style="padding: 10px 12px; text-align: right; color: var(--accent); font-weight: 800;">${row.percentage}%</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  // ── 3. Sales Trend & Percentage Contribution (Bar Graph) ──
+  const salesCanvas = document.getElementById("chart-admin-sales-trend");
+  if (salesCanvas) {
+    if (chartSalesTrend) {
+      chartSalesTrend.destroy();
+    }
+
+    const isDark = document.body.classList.contains("dark-theme");
+    const gridColor = isDark ? "#23233c" : "#e2e8f0";
+    const textColor = isDark ? "#ffffff" : "#1e1e1e";
+
+    const labels = breakdownRows.map(r => r.period);
+    const dataVals = breakdownRows.map(r => r.revenue);
+
+    chartSalesTrend = new Chart(salesCanvas, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Sales (₹)",
+          data: dataVals,
+          backgroundColor: isDark ? "rgba(99, 102, 241, 0.75)" : "rgba(79, 70, 229, 0.8)",
+          hoverBackgroundColor: isDark ? "#6366f1" : "#4f46e5",
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { size: 9, family: "'Plus Jakarta Sans', sans-serif" }
+            }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { size: 9, family: "'Plus Jakarta Sans', sans-serif" },
+              callback: function(value) { return "₹" + value.toLocaleString("en-IN"); }
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+function renderAdminProductsTable() {
+  const products = getProducts();
+  const tbody = document.getElementById("admin-products-table-body");
+  
+  tbody.innerHTML = products.map(p => `
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 10px 8px; font-weight: 800; color: var(--text-secondary);">${p.id}</td>
+      <td style="padding: 10px 8px; font-weight: 700; color: var(--text-primary); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</td>
+      <td style="padding: 10px 8px; color: var(--text-secondary); font-weight: 700;">${p.category}</td>
+      <td style="padding: 10px 8px; text-align: right; font-weight: 800; color: var(--primary);">₹${p.price.toLocaleString("en-IN")}</td>
+      <td style="padding: 10px 8px; text-align: center;">
+        <input type="number" class="admin-stock-input" data-prod-id="${p.id}" value="${p.stock !== undefined ? p.stock : 50}" style="width: 55px; height: 26px; font-size: 11px; text-align: center; border-radius: var(--radius-sm); border: 1.5px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary); font-weight: 800;">
+      </td>
+      <td style="padding: 10px 8px; text-align: center; white-space: nowrap;">
+        <button class="btn btn-secondary btn-sm btn-admin-edit-prod" data-prod-id="${p.id}" style="width: auto; height: 24px; padding: 0 8px; font-size: 10px; font-weight: 700; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; margin-right: 4px;">Edit</button>
+        <button class="btn btn-secondary btn-sm btn-admin-del-prod" data-prod-id="${p.id}" style="width: auto; height: 24px; padding: 0 8px; font-size: 10px; font-weight: 700; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; color: var(--danger); border-color: var(--danger-light);">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Handle stock adjustments
+  tbody.querySelectorAll(".admin-stock-input").forEach(input => {
+    input.addEventListener("change", () => {
+      const pid = input.getAttribute("data-prod-id");
+      const newStock = parseInt(input.value);
+      if (!isNaN(newStock) && newStock >= 0) {
+        const prods = getProducts();
+        const idx = prods.findIndex(p => p.id === pid);
+        if (idx > -1) {
+          prods[idx].stock = newStock;
+          localStorage.setItem("nexcart_products", JSON.stringify(prods));
+          
+          if (typeof PRODUCT_CATALOG !== "undefined") {
+            const pcIdx = PRODUCT_CATALOG.findIndex(pc => pc.id === pid);
+            if (pcIdx > -1) PRODUCT_CATALOG[pcIdx].stock = newStock;
+          }
+          showToast(`Stock updated for ${pid} to ${newStock}`, "success");
+        }
+      }
+    });
+  });
+
+  // Handle Edit Product clicks
+  tbody.querySelectorAll(".btn-admin-edit-prod").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const pid = btn.getAttribute("data-prod-id");
+      const prod = products.find(p => p.id === pid);
+      if (prod) {
+        document.getElementById("admin-prod-screen-title").textContent = "Edit Product Details";
+        document.getElementById("admin-prod-id").value = prod.id;
+        document.getElementById("admin-prod-key").value = prod.id;
+        document.getElementById("admin-prod-key").readOnly = true; // PK cannot be updated
+        document.getElementById("admin-prod-name").value = prod.name;
+        document.getElementById("admin-prod-category").value = prod.category;
+        document.getElementById("admin-prod-price").value = prod.price;
+        document.getElementById("admin-prod-mrp").value = prod.mrp || prod.price;
+        document.getElementById("admin-prod-stock").value = prod.stock !== undefined ? prod.stock : 50;
+        document.getElementById("admin-prod-image").value = prod.image;
+        document.getElementById("admin-prod-desc").value = prod.description || "";
+
+        routeTo("screen-admin-product-form");
+      }
+    });
+  });
+
+  // Handle Delete Product clicks (DBMS constraint verification)
+  tbody.querySelectorAll(".btn-admin-del-prod").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const pid = btn.getAttribute("data-prod-id");
+      const res = deleteProduct(pid);
+      if (res.success) {
+        showToast("Product deleted successfully!", "success");
+        renderAdminProductsTable();
+        renderAdminKPIs();
+      } else {
+        showAlert("DBMS Integrity Constraint Restriction", res.reason, "danger");
+      }
+    });
+  });
+}
+
+function renderAdminCategoriesTable() {
+  const cats = getCategories();
+  const tbody = document.getElementById("admin-categories-table-body");
+  
+  tbody.innerHTML = cats.map(c => `
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 10px 8px; font-weight: 800; color: var(--primary);">${c.id}</td>
+      <td style="padding: 10px 8px; font-weight: 700; color: var(--text-primary);">${c.name}</td>
+      <td style="padding: 10px 8px; color: var(--text-light);"><i data-lucide="${c.icon}" style="width: 14px; height: 14px;"></i></td>
+      <td style="padding: 10px 8px; text-align: center;">
+        <button class="btn btn-secondary btn-sm btn-admin-del-cat" data-cat-id="${c.id}" style="width: auto; height: 24px; padding: 0 8px; font-size: 10px; font-weight: 700; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; color: var(--danger); border-color: var(--danger-light);">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+
+  if (window.lucide) window.lucide.createIcons();
+
+  // Handle Category Deletion
+  tbody.querySelectorAll(".btn-admin-del-cat").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const cid = btn.getAttribute("data-cat-id");
+      const res = deleteCategory(cid);
+      if (res.success) {
+        showToast("Category deleted successfully!", "success");
+        renderAdminCategoriesTable();
+        populateAdminCategorySelect();
+      } else {
+        showAlert("DBMS Integrity Constraint Restriction", res.reason, "danger");
+      }
+    });
+  });
+}
+
+function renderAdminOrdersTable() {
+  const orders = JSON.parse(localStorage.getItem("nexcart_orders") || "[]");
+  const tbody = document.getElementById("admin-orders-table-body");
+  
+  if (orders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="padding: 16px; text-align: center; color: var(--text-light);">No client transactions found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = orders.map(order => {
+    const dateFormatted = new Date(order.date).toLocaleDateString("en-IN", {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
+    return `
+      <tr style="border-bottom: 1px solid var(--border-color);">
+        <td style="padding: 10px 8px; font-weight: 800; color: var(--text-primary);">${order.id}</td>
+        <td style="padding: 10px 8px; font-weight: 700; color: var(--text-secondary); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${order.user_email}</td>
+        <td style="padding: 10px 8px; color: var(--text-light); font-weight: 700;">${dateFormatted}</td>
+        <td style="padding: 10px 8px; text-align: right; font-weight: 800; color: var(--primary);">₹${order.total_amount.toLocaleString("en-IN")}</td>
+        <td style="padding: 10px 8px; text-align: center;">
+          <select class="admin-order-status-select" data-order-id="${order.id}" style="font-size: 11px; padding: 2px 6px; font-weight: 700; border-radius: var(--radius-sm); border: 1.5px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary); outline: none;">
+            <option value="processing" ${order.status === "processing" ? "selected" : ""}>Processing</option>
+            <option value="confirmed" ${order.status === "confirmed" ? "selected" : ""}>Confirmed</option>
+            <option value="shipped" ${order.status === "shipped" ? "selected" : ""}>Shipped</option>
+            <option value="delivered" ${order.status === "delivered" ? "selected" : ""}>Delivered</option>
+          </select>
+        </td>
+        <td style="padding: 10px 8px; text-align: center;">
+          <button class="btn btn-secondary btn-sm btn-admin-view-invoice" data-order-id="${order.id}" style="width: auto; height: 24px; padding: 0 8px; font-size: 10px; font-weight: 700; border-radius: var(--radius-sm);">Invoice</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Handle Order Status Modifications
+  tbody.querySelectorAll(".admin-order-status-select").forEach(select => {
+    select.addEventListener("change", () => {
+      const oid = select.getAttribute("data-order-id");
+      const nextStatus = select.value;
+      
+      const ords = JSON.parse(localStorage.getItem("nexcart_orders") || "[]");
+      const idx = ords.findIndex(o => o.id === oid);
+      if (idx > -1) {
+        ords[idx].status = nextStatus;
+        localStorage.setItem("nexcart_orders", JSON.stringify(ords));
+        showToast(`Order status updated to ${nextStatus}`, "success");
+        renderAdminOrdersTable();
+        renderAdminKPIs();
+      }
+    });
+  });
+
+  // Handle Invoice click listeners
+  tbody.querySelectorAll(".btn-admin-view-invoice").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const oid = btn.getAttribute("data-order-id");
+      openInvoiceModal(oid);
+    });
+  });
+}
+
+function populateAdminCategorySelect() {
+  const cats = getCategories();
+  const select = document.getElementById("admin-prod-category");
+  select.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function initAdminDashboard() {
+  // Account settings Switch Toggle
+  const accAdminBtn = document.getElementById("btn-acc-admin");
+  if (accAdminBtn) {
+    accAdminBtn.onclick = () => {
+      renderAdminKPIs();
+      renderAdminProductsTable();
+      renderAdminCategoriesTable();
+      renderAdminOrdersTable();
+      populateAdminCategorySelect();
+      routeTo("screen-admin");
+    };
+  }
+
+  // Dashboard Back Button
+  const adminBackBtn = document.getElementById("btn-admin-back");
+  if (adminBackBtn) {
+    adminBackBtn.onclick = () => {
+      routeTo("screen-account");
+    };
+  }
+
+  // Add Product screen triggers
+  const addProdBtn = document.getElementById("btn-admin-add-product");
+  if (addProdBtn) {
+    addProdBtn.onclick = () => {
+      document.getElementById("admin-prod-screen-title").textContent = "Add New Product";
+      document.getElementById("admin-prod-id").value = "";
+      
+      // Auto-generate a random, unique Product ID
+      const prods = getProducts();
+      let uid = "";
+      let exists = true;
+      while (exists) {
+        uid = "prod-" + Math.random().toString(36).substring(2, 8);
+        exists = prods.some(p => p.id === uid);
+      }
+      
+      document.getElementById("admin-prod-key").value = uid;
+      document.getElementById("admin-prod-key").readOnly = true;
+      document.getElementById("form-admin-product").reset();
+      
+      // Reset after form.reset() clears it
+      document.getElementById("admin-prod-key").value = uid;
+      
+      populateAdminCategorySelect();
+      routeTo("screen-admin-product-form");
+    };
+  }
+
+  // Back and Cancel triggers for Product Form
+  const backProdBtn = document.getElementById("btn-admin-prod-back");
+  if (backProdBtn) {
+    backProdBtn.onclick = () => {
+      routeTo("screen-admin");
+    };
+  }
+
+  const cancelProdBtn = document.getElementById("btn-admin-prod-cancel");
+  if (cancelProdBtn) {
+    cancelProdBtn.onclick = () => {
+      routeTo("screen-admin");
+    };
+  }
+
+  // Add Category screen triggers
+  const addCatBtn = document.getElementById("btn-admin-add-category");
+  if (addCatBtn) {
+    addCatBtn.onclick = () => {
+      document.getElementById("admin-cat-screen-title").textContent = "Add New Category";
+      document.getElementById("form-admin-category").reset();
+      routeTo("screen-admin-category-form");
+    };
+  }
+
+  // Back and Cancel triggers for Category Form
+  const backCatBtn = document.getElementById("btn-admin-cat-back");
+  if (backCatBtn) {
+    backCatBtn.onclick = () => {
+      routeTo("screen-admin");
+    };
+  }
+
+  const cancelCatBtn = document.getElementById("btn-admin-cat-cancel");
+  if (cancelCatBtn) {
+    cancelCatBtn.onclick = () => {
+      routeTo("screen-admin");
+    };
+  }
+
+  // Product Form CRUD Submissions
+  const prodForm = document.getElementById("form-admin-product");
+  if (prodForm) {
+    prodForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const pid = document.getElementById("admin-prod-key").value.trim();
+      const pName = document.getElementById("admin-prod-name").value.trim();
+      const pCat = document.getElementById("admin-prod-category").value;
+      const pPrice = parseInt(document.getElementById("admin-prod-price").value);
+      const pMrp = parseInt(document.getElementById("admin-prod-mrp").value);
+      const pStock = parseInt(document.getElementById("admin-prod-stock").value);
+      const pImg = document.getElementById("admin-prod-image").value.trim();
+      const pDesc = document.getElementById("admin-prod-desc").value.trim();
+
+      const productObject = {
+        id: pid,
+        name: pName,
+        category: pCat,
+        price: pPrice,
+        mrp: pMrp,
+        stock: pStock,
+        rating: 4.5,
+        reviews: 1,
+        image: pImg,
+        description: pDesc
+      };
+
+      const res = saveProduct(productObject);
+      if (res.success) {
+        showToast("Product saved successfully!", "success");
+        routeTo("screen-admin");
+        renderAdminProductsTable();
+        renderAdminKPIs();
+      } else {
+        showAlert("DBMS FK Check Error", res.reason, "danger");
+      }
+    });
+  }
+
+  // Category Form CRUD Submissions
+  const catForm = document.getElementById("form-admin-category");
+  if (catForm) {
+    catForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const cid = document.getElementById("admin-cat-id").value.trim();
+      const cName = document.getElementById("admin-cat-name").value.trim();
+      const cIcon = document.getElementById("admin-cat-icon").value.trim();
+
+      const catObj = { id: cid, name: cName, icon: cIcon };
+      const res = saveCategory(catObj);
+      if (res.success) {
+        showToast("Category saved successfully!", "success");
+        routeTo("screen-admin");
+        renderAdminCategoriesTable();
+        populateAdminCategorySelect();
+      }
+    });
+  }
+}
+
+// ── HTML5 History Navigation State Sync (Back Button Support) ──
+window.addEventListener("popstate", (event) => {
+  if (event.state && event.state.screenId) {
+    routeTo(event.state.screenId, true);
+  } else {
+    // Default fallback
+    if (localStorage.getItem("nexcart_active_user")) {
+      routeTo("screen-home", true);
+    } else {
+      routeTo("screen-auth", true);
+    }
+  }
+});
+
+// Initialize first history frame
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    // Check if there is a shared product parameter in URL query or hash
+    const urlParams = new URLSearchParams(window.location.search);
+    let shareProductId = urlParams.get("product");
+    
+    if (!shareProductId) {
+      const hash = window.location.hash;
+      if (hash.includes("product=")) {
+        const match = hash.match(/product=([^&]+)/);
+        if (match) {
+          shareProductId = match[1];
+        }
+      }
+    }
+    
+    if (shareProductId) {
+      const products = getProducts();
+      const found = products.find(p => p.id === shareProductId);
+      if (found) {
+        openProductDetails(found.id);
+        return; // Skip replacing state with home/auth if shared product PDP loaded
+      }
+    }
+    
+    window.history.replaceState({ screenId: Store.activeScreen }, "", "#" + Store.activeScreen);
+  }, 500);
+});
+
 
 

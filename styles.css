@@ -90,6 +90,7 @@ button {
 #app-container {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   margin: 0;
   background-color: var(--bg-primary);
   position: relative;
@@ -250,11 +251,11 @@ button {
 
 /* Sticky Navigation Bar */
 .sticky-navbar {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  z-index: 100;
+  z-index: 999;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -2337,16 +2338,172 @@ button {
 
 /* Dark Theme Variables Override */
 body.dark-theme {
-  --bg-primary: #0f172a;       /* Slate 900 */
-  --bg-secondary: #1e293b;     /* Slate 800 */
-  --bg-tertiary: #334155;      /* Slate 700 */
-  --text-primary: #f8fafc;     /* Slate 50 */
-  --text-secondary: #cbd5e1;   /* Slate 300 */
-  --text-light: #64748b;       /* Slate 500 */
-  --border-color: #334155;     /* Slate 700 */
+  --bg-primary: #0a0a10;       /* Rich Obsidian Black */
+  --bg-secondary: #121222;     /* Deep Midnight Navy */
+  --bg-tertiary: #1e1e32;      /* Slate Blue/Gray */
+  --text-primary: #ffffff;     /* Bright White */
+  --text-secondary: #cbd5e1;   /* Muted Slate Gray */
+  --text-light: #8a99ad;       /* Neutral Cool Gray */
+  --border-color: #23233c;     /* Sleek Cyber Border */
   
-  --glass-bg: rgba(15, 23, 42, 0.75);
-  --glass-border: rgba(51, 65, 85, 0.8);
-  --primary-light: rgba(79, 70, 229, 0.25);
-  --accent-light: rgba(16, 185, 129, 0.25);
+  --primary: #6366f1;          /* Neon Indigo accent */
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.15);
+  
+  --accent: #10b981;          /* Bright Emerald accent */
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.15);
+  
+  --glass-bg: rgba(10, 10, 16, 0.85);
+  --glass-border: rgba(35, 35, 60, 0.8);
 }
+
+/* ── Responsive Admin Relational Dashboard Layouts ── */
+.admin-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .admin-grid-layout {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 20px;
+  }
+  .admin-kpis-wrapper {
+    grid-column: span 2;
+  }
+  .admin-cat-revenue {
+    grid-column: span 1;
+  }
+  .admin-best-sellers {
+    grid-column: span 1;
+  }
+  .admin-products-wrapper {
+    grid-column: span 2;
+  }
+  .admin-categories-wrapper {
+    grid-column: span 2;
+  }
+  .admin-orders-wrapper {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1200px) {
+  .admin-grid-layout {
+    grid-template-columns: repeat(4, 1fr);
+    padding: 24px 32px;
+    gap: 24px;
+  }
+  .admin-kpis-wrapper {
+    grid-column: span 2;
+  }
+  .admin-cat-revenue {
+    grid-column: span 1;
+  }
+  .admin-best-sellers {
+    grid-column: span 1;
+  }
+  .admin-products-wrapper {
+    grid-column: span 3;
+  }
+  .admin-categories-wrapper {
+    grid-column: span 1;
+  }
+  .admin-orders-wrapper {
+    grid-column: span 4;
+  }
+  .admin-table-wrapper {
+    max-height: 450px !important;
+  }
+}
+
+.admin-card {
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: var(--transition-fast);
+}
+
+.admin-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.admin-table th {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 800;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+}
+
+.admin-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Printable Invoice Specific Styles ── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-modal-overlay,
+  #invoice-modal-overlay * {
+    visibility: visible;
+  }
+  #invoice-modal-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    background: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+  #invoice-modal-overlay .modal-card {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  #btn-close-invoice,
+  #btn-print-invoice {
+    display: none !important;
+  }
+}
+

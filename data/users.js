@@ -201,6 +201,7 @@ function registerUser(email, password, name) {
   return { success: true };
 }
 
+
 // ── Login Existing User ──────────────────────────────────────
 function loginUser(email, password) {
   const users = getAllUsers();
