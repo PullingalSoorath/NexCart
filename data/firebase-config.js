@@ -22,7 +22,7 @@ let firebaseAuth = null;
 let isFirebaseConnected = false;
 
 // ── Initialize Firebase App ──────────────────────────────────
-function initFirebase() {
+async function initFirebase() {
   if (typeof firebase !== "undefined" && !firebaseApp) {
     try {
       firebaseApp = firebase.initializeApp(firebaseConfig);
@@ -41,7 +41,10 @@ function initFirebase() {
       updateFirebaseStatusUI(true);
 
       // Trigger automatic cloud seeding check
-      seedFirebaseData();
+      await seedFirebaseData();
+
+      // Sync Firestore documents to Local Storage & Product Catalog
+      await syncFirestoreWithLocal();
 
       // Listen to Auth State Changes
       setupFirebaseAuthObserver();
@@ -207,6 +210,46 @@ async function seedFirebaseData(force = false) {
 
   } catch (err) {
     console.warn("Firestore auto-seeding sync note:", err.message);
+  }
+}
+
+// ── Pull Cloud Documents into Local Storage & Catalog ────────
+async function syncFirestoreWithLocal() {
+  if (!firestoreDb || !isFirebaseConnected) return;
+
+  try {
+    // 1. Sync Products from Firestore
+    const productsSnap = await firestoreDb.collection("products").get();
+    if (!productsSnap.empty) {
+      const cloudProds = productsSnap.docs.map(doc => doc.data());
+      localStorage.setItem("nexcart_products", JSON.stringify(cloudProds));
+      if (typeof syncProductCatalogWithStorage === "function") {
+        syncProductCatalogWithStorage();
+      }
+    }
+
+    // 2. Sync Categories from Firestore
+    const catsSnap = await firestoreDb.collection("categories").get();
+    if (!catsSnap.empty) {
+      const cloudCats = catsSnap.docs.map(doc => doc.data());
+      localStorage.setItem("nexcart_categories", JSON.stringify(cloudCats));
+    }
+
+    // 3. Sync Orders from Firestore
+    const ordersSnap = await firestoreDb.collection("orders").get();
+    if (!ordersSnap.empty) {
+      const cloudOrders = ordersSnap.docs.map(doc => doc.data());
+      localStorage.setItem("nexcart_orders", JSON.stringify(cloudOrders));
+    }
+
+    // 4. Sync Order Items from Firestore
+    const itemsSnap = await firestoreDb.collection("order_items").get();
+    if (!itemsSnap.empty) {
+      const cloudItems = itemsSnap.docs.map(doc => doc.data());
+      localStorage.setItem("nexcart_order_items", JSON.stringify(cloudItems));
+    }
+  } catch (err) {
+    console.warn("Firestore sync to local error:", err.message);
   }
 }
 

@@ -92,3 +92,38 @@ PRODUCT_CATALOG.forEach(p => {
     }
   }
 });
+
+// ── Sync Product Catalog with Local Storage & Cloud Persistence ──
+function syncProductCatalogWithStorage() {
+  try {
+    const savedProductsStr = localStorage.getItem("nexcart_products");
+    if (savedProductsStr) {
+      const savedProducts = JSON.parse(savedProductsStr);
+      savedProducts.forEach(sp => {
+        const existingIdx = PRODUCT_CATALOG.findIndex(p => p.id === sp.id);
+        if (existingIdx > -1) {
+          PRODUCT_CATALOG[existingIdx] = { ...PRODUCT_CATALOG[existingIdx], ...sp };
+        } else {
+          // Enrich fallback fields for newly added products
+          if (!sp.warranty) sp.warranty = "Brand Authenticity Guarantee";
+          if (!sp.images || sp.images.length === 0) {
+            sp.images = [sp.image || "", (sp.image || "") + "&sig=" + sp.id + "sec"];
+          }
+          if (!sp.highlights) {
+            sp.highlights = [
+              "100% Genuine Certified Quality",
+              "Fast Secure Shipping with Easy Returns",
+              "Standard Manufacturer Warranty Included"
+            ];
+          }
+          PRODUCT_CATALOG.push(sp);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Product catalog sync with storage error:", err.message);
+  }
+}
+
+// Run initial catalog sync
+syncProductCatalogWithStorage();

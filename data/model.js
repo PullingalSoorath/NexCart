@@ -31,6 +31,10 @@ function initRelationalTables() {
     } else {
       localStorage.setItem("nexcart_products", JSON.stringify([]));
     }
+  } else {
+    if (typeof syncProductCatalogWithStorage === "function") {
+      syncProductCatalogWithStorage();
+    }
   }
 
   // 3. Initialize Orders Table
