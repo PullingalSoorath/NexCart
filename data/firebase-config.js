@@ -7,12 +7,13 @@
 // Default Firebase Configuration Object
 // Replace placeholders with your own Firebase Console credentials when ready:
 const firebaseConfig = {
-  apiKey: "AIzaSyDemoPlaceholderKey_NexCart2026",
-  authDomain: "nexcart-ecommerce-demo.firebaseapp.com",
-  projectId: "nexcart-ecommerce-demo",
-  storageBucket: "nexcart-ecommerce-demo.appspot.com",
-  messagingSenderId: "109090909090",
-  appId: "1:109090909090:web:nexcartdemo2026app"
+  apiKey: "AIzaSyBIfeHste78KwsrkbwIzHQNL4mHbVzOq-Y",
+  authDomain: "nexcart-ecd64.firebaseapp.com",
+  projectId: "nexcart-ecd64",
+  storageBucket: "nexcart-ecd64.firebasestorage.app",
+  messagingSenderId: "41757176974",
+  appId: "1:41757176974:web:38228843c79d0d0396c5df",
+  measurementId: "G-Y3G248LYZF"
 };
 
 let firebaseApp = null;
