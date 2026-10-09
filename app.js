@@ -52,6 +52,13 @@ function routeTo(screenId, ignoreHistory = false) {
   }
   
   Store.activeScreen = screenId;
+  localStorage.setItem("nexcart_saved_screen", screenId);
+  try {
+    if (window.location.hash !== "#" + screenId) {
+      window.location.hash = screenId;
+    }
+  } catch (e) {}
+
   updateBadges(); // Sync header & nav badges on every route transition
   
   // Determine Header & Bottom Nav visibility
@@ -1349,6 +1356,8 @@ function getProductReviews(productId) {
 function openProductDetails(productId) {
   const product = PRODUCT_CATALOG.find(p => p.id === productId);
   if (!product) return;
+
+  localStorage.setItem("nexcart_saved_pdp_id", productId);
   
   const index = Store.recentlyWatched.findIndex(p => p.id === productId);
   if (index !== -1) Store.recentlyWatched.splice(index, 1);
@@ -4380,16 +4389,16 @@ window.addEventListener("popstate", (event) => {
   if (event.state && event.state.screenId) {
     routeTo(event.state.screenId, true);
   } else {
-    // Default fallback
-    if (localStorage.getItem("nexcart_active_user")) {
-      routeTo("screen-home", true);
+    const savedScreen = localStorage.getItem("nexcart_saved_screen");
+    if (savedScreen && localStorage.getItem("nexcart_active_user")) {
+      routeTo(savedScreen, true);
     } else {
       routeTo("screen-auth", true);
     }
   }
 });
 
-// Initialize first history frame
+// Restore exact view state on page reload
 window.addEventListener("load", () => {
   setTimeout(() => {
     // Check if there is a shared product parameter in URL query or hash
@@ -4411,12 +4420,29 @@ window.addEventListener("load", () => {
       const found = products.find(p => p.id === shareProductId);
       if (found) {
         openProductDetails(found.id);
-        return; // Skip replacing state with home/auth if shared product PDP loaded
+        return;
       }
     }
     
+    // View state restoration on reload
+    const activeUser = localStorage.getItem("nexcart_active_user");
+    let targetScreen = localStorage.getItem("nexcart_saved_screen") || (window.location.hash ? window.location.hash.replace("#", "").split("?")[0] : null);
+    const targetPdpId = localStorage.getItem("nexcart_saved_pdp_id");
+
+    if (activeUser && targetScreen && targetScreen !== "screen-auth" && document.getElementById(targetScreen)) {
+      if (targetScreen === "screen-pdp" && targetPdpId) {
+        openProductDetails(targetPdpId);
+      } else {
+        routeTo(targetScreen, true);
+      }
+    } else if (activeUser) {
+      routeTo("screen-home", true);
+    } else {
+      routeTo("screen-auth", true);
+    }
+
     window.history.replaceState({ screenId: Store.activeScreen }, "", "#" + Store.activeScreen);
-  }, 500);
+  }, 400);
 });
 
 
