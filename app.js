@@ -4061,15 +4061,24 @@ function renderAdminProductsTable() {
     });
   });
 
-  // Handle Delete Product clicks (DBMS constraint verification)
+  // Handle Delete Product clicks (DBMS constraint verification + Cascade Delete option)
   tbody.querySelectorAll(".btn-admin-del-prod").forEach(btn => {
     btn.addEventListener("click", () => {
       const pid = btn.getAttribute("data-prod-id");
-      const res = deleteProduct(pid);
+      const res = deleteProduct(pid, false);
       if (res.success) {
         showToast("Product deleted successfully!", "success");
         renderAdminProductsTable();
         renderAdminKPIs();
+      } else if (res.canCascade) {
+        if (confirm(`${res.reason}\n\nDo you want to FORCE DELETE this product from the database catalog?`)) {
+          const forceRes = deleteProduct(pid, true);
+          if (forceRes.success) {
+            showToast("Product force-deleted successfully!", "success");
+            renderAdminProductsTable();
+            renderAdminKPIs();
+          }
+        }
       } else {
         showAlert("DBMS Integrity Constraint Restriction", res.reason, "danger");
       }
@@ -4094,15 +4103,26 @@ function renderAdminCategoriesTable() {
 
   if (window.lucide) window.lucide.createIcons();
 
-  // Handle Category Deletion
+  // Handle Category Deletion (DBMS constraint verification + Cascade Delete option)
   tbody.querySelectorAll(".btn-admin-del-cat").forEach(btn => {
     btn.addEventListener("click", () => {
       const cid = btn.getAttribute("data-cat-id");
-      const res = deleteCategory(cid);
+      const res = deleteCategory(cid, false);
       if (res.success) {
         showToast("Category deleted successfully!", "success");
         renderAdminCategoriesTable();
         populateAdminCategorySelect();
+      } else if (res.canCascade) {
+        if (confirm(`${res.reason}\n\nDo you want to FORCE DELETE this category along with all its linked products?`)) {
+          const forceRes = deleteCategory(cid, true);
+          if (forceRes.success) {
+            showToast("Category and linked products force-deleted successfully!", "success");
+            renderAdminCategoriesTable();
+            renderAdminProductsTable();
+            populateAdminCategorySelect();
+            renderAdminKPIs();
+          }
+        }
       } else {
         showAlert("DBMS Integrity Constraint Restriction", res.reason, "danger");
       }

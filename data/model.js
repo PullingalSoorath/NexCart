@@ -235,21 +235,37 @@ function saveCategory(cat) {
   return { success: true };
 }
 
-function deleteCategory(categoryId) {
+function deleteCategory(categoryId, forceCascade = false) {
   const products = JSON.parse(localStorage.getItem("nexcart_products") || "[]");
+  const linkedProducts = products.filter(p => p.category === categoryId);
   
-  // ON DELETE RESTRICT check: Do not delete category if active products belong to it
-  const hasProducts = products.some(p => p.category === categoryId);
-  if (hasProducts) {
+  if (linkedProducts.length > 0 && !forceCascade) {
     return { 
-      success: false, 
+      success: false,
+      canCascade: true,
       reason: `RESTRICT CONSTRAINT VIOLATION: Cannot delete category. Product records link to category '${categoryId}'.` 
     };
   }
 
+  // Execute Cascade Delete on linked products if forceCascade is true
+  if (linkedProducts.length > 0 && forceCascade) {
+    const updatedProducts = products.filter(p => p.category !== categoryId);
+    localStorage.setItem("nexcart_products", JSON.stringify(updatedProducts));
+    
+    if (typeof PRODUCT_CATALOG !== "undefined") {
+      linkedProducts.forEach(lp => {
+        const memIdx = PRODUCT_CATALOG.findIndex(p => p.id === lp.id);
+        if (memIdx > -1) PRODUCT_CATALOG.splice(memIdx, 1);
+        if (typeof deleteDocFromFirestore === "function") {
+          deleteDocFromFirestore("products", lp.id);
+        }
+      });
+    }
+  }
+
   const cats = getCategories();
-  const updated = cats.filter(c => c.id !== categoryId);
-  localStorage.setItem("nexcart_categories", JSON.stringify(updated));
+  const updatedCats = cats.filter(c => c.id !== categoryId);
+  localStorage.setItem("nexcart_categories", JSON.stringify(updatedCats));
   
   if (typeof deleteDocFromFirestore === "function") {
     deleteDocFromFirestore("categories", categoryId);
@@ -300,14 +316,14 @@ function saveProduct(product) {
   return { success: true };
 }
 
-function deleteProduct(productId) {
+function deleteProduct(productId, forceCascade = false) {
   const orderItems = JSON.parse(localStorage.getItem("nexcart_order_items") || "[]");
-  
-  // ON DELETE RESTRICT check: Do not delete product if it was purchased in placed order_items
   const hasOrderLink = orderItems.some(oi => oi.product_id === productId);
-  if (hasOrderLink) {
+  
+  if (hasOrderLink && !forceCascade) {
     return { 
       success: false, 
+      canCascade: true,
       reason: `RESTRICT CONSTRAINT VIOLATION: Cannot delete product. Product exists inside historical Order Items.` 
     };
   }
