@@ -71,6 +71,9 @@ function setupFirebaseAuthObserver() {
         if (typeof loadActiveUserSession === "function") loadActiveUserSession();
         if (typeof updateBadges === "function") updateBadges();
       }
+      if (typeof routeTo === "function" && (typeof Store === "undefined" || Store.activeScreen === "screen-auth")) {
+        routeTo("screen-home");
+      }
     }
   });
 }
@@ -314,8 +317,8 @@ async function loginWithGoogle() {
         showToast(`Welcome, ${user.displayName || 'User'}! Logged in with Google.`, "success");
       }
 
-      if (typeof switchScreen === "function") {
-        switchScreen("screen-home");
+      if (typeof routeTo === "function") {
+        routeTo("screen-home");
       }
     }
   } catch (err) {
