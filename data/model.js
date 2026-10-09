@@ -4,6 +4,10 @@
 
 // ── Initialize Relational Tables ─────────────────────────────
 function initRelationalTables() {
+  if (typeof initFirebase === "function") {
+    initFirebase();
+  }
+
   // 1. Initialize Categories Table
   if (!localStorage.getItem("nexcart_categories")) {
     const defaultCats = [
@@ -220,6 +224,10 @@ function saveCategory(cat) {
     cats.push(cat);
   }
   localStorage.setItem("nexcart_categories", JSON.stringify(cats));
+  
+  if (typeof saveDocToFirestore === "function") {
+    saveDocToFirestore("categories", cat.id, cat);
+  }
   return { success: true };
 }
 
@@ -238,6 +246,10 @@ function deleteCategory(categoryId) {
   const cats = getCategories();
   const updated = cats.filter(c => c.id !== categoryId);
   localStorage.setItem("nexcart_categories", JSON.stringify(updated));
+  
+  if (typeof deleteDocFromFirestore === "function") {
+    deleteDocFromFirestore("categories", categoryId);
+  }
   return { success: true };
 }
 
@@ -277,6 +289,10 @@ function saveProduct(product) {
       PRODUCT_CATALOG.push(product);
     }
   }
+
+  if (typeof saveDocToFirestore === "function") {
+    saveDocToFirestore("products", product.id, product);
+  }
   return { success: true };
 }
 
@@ -301,8 +317,24 @@ function deleteProduct(productId) {
     const memIdx = PRODUCT_CATALOG.findIndex(p => p.id === productId);
     if (memIdx > -1) PRODUCT_CATALOG.splice(memIdx, 1);
   }
+
+  if (typeof deleteDocFromFirestore === "function") {
+    deleteDocFromFirestore("products", productId);
+  }
   
   return { success: true };
+}
+
+// ── Cloud Firestore Sync Helper for Orders & Items ───────────
+function saveOrderToFirebase(order, items) {
+  if (typeof saveDocToFirestore === "function") {
+    saveDocToFirestore("orders", order.id, order);
+    if (Array.isArray(items)) {
+      items.forEach(item => {
+        saveDocToFirestore("order_items", item.id, item);
+      });
+    }
+  }
 }
 
 // ── Programmatic Joins & Aggregations ────────────────────────

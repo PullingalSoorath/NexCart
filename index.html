@@ -1324,7 +1324,10 @@
         <button class="icon-btn pdp-back-btn" id="btn-admin-back" title="Go back">
           <i data-lucide="arrow-left"></i>
         </button>
-        <div style="font-weight: 800; font-size: 16px;">Admin Relational Panel</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="font-weight: 800; font-size: 16px;">Admin Relational Panel</div>
+          <div class="firebase-status-badge" style="font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-full); display: flex; align-items: center; gap: 4px;"></div>
+        </div>
         <div style="width: 36px;"></div> <!-- Spacer -->
       </div>
 
@@ -1570,6 +1573,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- jsPDF Library for Dynamic PDF Invoice Exports -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- ── Firebase Cloud Backend SDK ── -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="data/firebase-config.js"></script>
 
   <!-- ── Data Layer (load before app.js) ── -->
   <!-- Product category files -->

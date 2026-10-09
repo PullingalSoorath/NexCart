@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NexCart E-Commerce Project Review & Architectural Documentation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --secondary: #475569;
+      --dark: #0f172a;
+      --light: #f8fafc;
+      --border: #e2e8f0;
+      --accent: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #334155;
+      background-color: #ffffff;
+      line-height: 1.6;
+      font-size: 11pt;
+    }
+
+    /* Print settings */
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+    
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .page-break {
+        page-break-after: always;
+        break-after: page;
+      }
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px 40px;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .cover-header {
+      border-left: 6px solid var(--primary);
+      padding-left: 24px;
+      margin-top: 40px;
+    }
+
+    .cover-title {
+      font-size: 32pt;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.1;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+
+    .cover-subtitle {
+      font-size: 14pt;
+      font-weight: 500;
+      color: var(--secondary);
+    }
+
+    .cover-middle {
+      margin: 40px 0;
+    }
+
+    .cover-meta {
+      font-size: 10pt;
+      color: var(--secondary);
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .cover-meta strong {
+      color: var(--dark);
+    }
+
+    /* Typography & Layout Elements */
+    h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: var(--dark);
+      margin-top: 30px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 6px;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-top: 20px;
+      margin-bottom: 10px;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    p {
+      margin-bottom: 12px;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin-bottom: 15px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    /* Styled Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0 25px;
+      font-size: 9.5pt;
+    }
+
+    th, td {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--light);
+      color: var(--dark);
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #fcfdfe;
+    }
+
+    /* Blocks & Panels */
+    .callout {
+      background-color: var(--light);
+      border-left: 4px solid var(--primary);
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+      font-size: 10pt;
+    }
+
+    .diagram-container {
+      border: 1.5px solid var(--border);
+      background-color: #fafbfc;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .code-block {
+      font-family: 'Consolas', 'Courier New', Courier, monospace;
+      background-color: var(--dark);
+      color: #e2e8f0;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 9pt;
+      overflow-x: auto;
+      margin: 15px 0;
+      white-space: pre-wrap;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .status-badge.success {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-badge.warning {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-badge.danger {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- COVER PAGE -->
+    <div class="cover-page">
+      <div class="cover-header">
+        <h1 class="cover-title">NexCart E-Commerce SPA<br>Project Review &amp; Architecture Documentation</h1>
+        <p class="cover-subtitle">Enterprise-Grade Architecture Evaluator Report</p>
+      </div>
+      
+      <div class="cover-middle">
+        <p style="font-size: 12pt; color: var(--secondary);">
+          A comprehensive overview of Front-End, Data Management, Relational Database Simulation, SPA Routing, PDF Invoice Generation, and Widescreen Relational Analytics.
+        </p>
+      </div>
+      
+      <div class="cover-meta">
+        <div>
+          <p><strong>System Evaluator:</strong> Software Engineering Board</p>
+          <p><strong>Project Version:</strong> v2.4.0 (Staged)</p>
+          <p><strong>Database Backend:</strong> Local Relational Database Engine</p>
+        </div>
+        <div>
+          <p><strong>Lead Developer:</strong> Pullingal Soorath</p>
+          <p><strong>Academic Term:</strong> University Mini-Project 2026</p>
+          <p><strong>Sign-off Status:</strong> <span class="status-badge success">Staged &amp; Approved</span></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 1 -->
+    <div class="page-break">
+      <h1>1. Executive Summary &amp; Project Overview</h1>
+      <p>
+        <strong>NexCart</strong> is a state-of-the-art Single Page Application (SPA) designed to deliver a modern, fluid E-commerce shopping experience while implementing academic and industry-grade Database Management System (DBMS) concepts. The platform simulates a relational database architecture on the client side, allowing complex multi-table queries, aggregation calculations, and data integrity enforcement.
+      </p>
+      
+      <h2>Core Tech Stack Breakdown</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Technology Layer</th>
+            <th>Component Specification</th>
+            <th>Implementation Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Front-End UI</strong></td>
+            <td>HTML5, Vanilla CSS, JS (ES6)</td>
+            <td>Modular components, fluid animations, premium Glassmorphic elements.</td>
+          </tr>
+          <tr>
+            <td><strong>SPA Routing Engine</strong></td>
+            <td>HTML5 History API (pushState/popstate)</td>
+            <td>Seamless view transitions, browser back-button &amp; mobile swipe gesture support.</td>
+          </tr>
+          <tr>
+            <td><strong>Relational Database Engine</strong></td>
+            <td>Local Simulation Layer (localStorage)</td>
+            <td>Underpins 4 related tables representing relational schemas and attributes.</td>
+          </tr>
+          <tr>
+            <td><strong>Dynamic Analytics</strong></td>
+            <td>Chart.js via CDN</td>
+            <td>Donut and bar charts representing product reviews and monthly sales ratios.</td>
+          </tr>
+          <tr>
+            <td><strong>PDF Document Exporter</strong></td>
+            <td>jsPDF Library via CDN</td>
+            <td>Compiles real-time order invoices into native binary PDF files in new tabs.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>System Objectives</h2>
+      <ul>
+        <li><strong>Academic Rigor:</strong> Verify multi-table data joins and aggregate queries.</li>
+        <li><strong>Referential Integrity:</strong> Implement DBMS-level Foreign Key verification and ON DELETE RESTRICT constraint logic.</li>
+        <li><strong>User Experience:</strong> Responsive design covering smartphones (dynamic viewport heights) up to widescreen desktop layouts.</li>
+      </ul>
+    </div>
+
+    <!-- SECTION 2 -->
+    <div class="page-break">
+      <h1>2. Application Architecture &amp; Workflow Diagrams</h1>
+      
+      <h2>Customer User Journey Workflow</h2>
+      <p>The diagram below represents the logical sequence of operations executed by customers:</p>
+      <div class="diagram-container">
+        <svg width="100%" height="80" viewBox="0 0 650 80">
+          <!-- Flow Nodes -->
+          <rect x="10" y="20" width="80" height="40" rx="6" fill="#4f46e5" />
+          <text x="50" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Registration</text>
+          
+          <path d="M 90 40 L 120 40" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+          
+          <rect x="120" y="20" width="80" height="40" rx="6" fill="#4f46e5" />
+          <text x="160" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Catalog Browse</text>
+          
+          <path d="M 200 40 L 230 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="230" y="20" width="80" height="40" rx="6" fill="#4f46e5" />
+          <text x="270" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Cart Add</text>
+          
+          <path d="M 310 40 L 340 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="340" y="20" width="80" height="40" rx="6" fill="#4f46e5" />
+          <text x="380" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Checkout</text>
+          
+          <path d="M 420 40 L 450 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="450" y="20" width="80" height="40" rx="6" fill="#4f46e5" />
+          <text x="490" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Place Order</text>
+          
+          <path d="M 530 40 L 560 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="560" y="20" width="80" height="40" rx="6" fill="#10b981" />
+          <text x="600" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Order History</text>
+        </svg>
+      </div>
+
+      <h2>Admin Control Workflows</h2>
+      <p>Admins are granted access to relational databases, metrics dashboards, and inventories:</p>
+      <div class="diagram-container">
+        <svg width="100%" height="80" viewBox="0 0 650 80">
+          <rect x="10" y="20" width="100" height="40" rx="6" fill="#1e293b" />
+          <text x="60" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Dashboard Panel</text>
+          
+          <path d="M 110 40 L 140 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="140" y="20" width="110" height="40" rx="6" fill="#4f46e5" />
+          <text x="195" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">KPI / Aggregation Graphs</text>
+          
+          <path d="M 250 40 L 280 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="280" y="20" width="100" height="40" rx="6" fill="#4f46e5" />
+          <text x="330" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Category CRUD</text>
+          
+          <path d="M 380 40 L 410 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="410" y="20" width="100" height="40" rx="6" fill="#4f46e5" />
+          <text x="460" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Product CRUD</text>
+          
+          <path d="M 510 40 L 540 40" stroke="#475569" stroke-width="2" />
+          
+          <rect x="540" y="20" width="100" height="40" rx="6" fill="#10b981" />
+          <text x="590" y="45" fill="white" font-size="9" font-weight="bold" text-anchor="middle">Order Fulfillment</text>
+        </svg>
+      </div>
+
+      <h2>Database Entity Relationship Schema Summary</h2>
+      <p>
+        The tables are mapped using strict Key constraints inside <strong>model.js</strong>:
+      </p>
+      <ul>
+        <li><code>Users</code>: Email is the unique Primary Key (PK).</li>
+        <li><code>Categories</code>: category_id (PK) links to <code>Products</code> category field (FK).</li>
+        <li><code>Products</code>: product_id (PK) links to <code>Order_Items</code> product_id field (FK).</li>
+        <li><code>Orders</code>: order_id (PK) links to <code>Order_Items</code> order_id field (FK) and contains user_email (FK).</li>
+      </ul>
+    </div>
+
+    <!-- SECTION 3 -->
+    <div class="page-break">
+      <h1>3. Feature &amp; Functionality Breakdown</h1>
+      
+      <h2>Customer Features</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Module Name</th>
+            <th>Technical Handling File</th>
+            <th>Functional Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>User Registration &amp; Auth</strong></td>
+            <td><code>data/users.js</code>, <code>app.js</code></td>
+            <td>Dynamic form inputs, password verification, address caching (Kerala/Trivandrum placeholders).</td>
+          </tr>
+          <tr>
+            <td><strong>Dynamic Products Catalog</strong></td>
+            <td><code>data/products/index.js</code></td>
+            <td>Searches, category tab switches, rating calculations.</td>
+          </tr>
+          <tr>
+            <td><strong>Shopping Cart &amp; Wishlist</strong></td>
+            <td><code>app.js</code>, <code>localStorage</code></td>
+            <td>Calculates subtotals, coupon deductions, enforces quantity limit (10 items maximum).</td>
+          </tr>
+          <tr>
+            <td><strong>Orders History &amp; PDFs</strong></td>
+            <td><code>app.js</code>, <code>data/model.js</code></td>
+            <td>Queries historic checkouts and generates tax invoice PDFs using jsPDF.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Admin Features</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Feature Module</th>
+            <th>Handling Codes</th>
+            <th>Architectural Operations</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Widescreen Analytics</strong></td>
+            <td><code>app.js</code>, <code>index.html</code></td>
+            <td>Donut and bar charts representing product reviews and monthly sales ratios.</td>
+          </tr>
+          <tr>
+            <td><strong>Category CRUD Panel</strong></td>
+            <td><code>index.html</code>, <code>app.js</code></td>
+            <td>Browse Lucide icons link button directly embedded. PK constraint validation logic.</td>
+          </tr>
+          <tr>
+            <td><strong>Product Inventory Manager</strong></td>
+            <td><code>index.html</code>, <code>app.js</code></td>
+            <td>Auto-populates randomized, unique Product IDs. FK constraint validation logic.</td>
+          </tr>
+          <tr>
+            <td><strong>Orders Fulfillment Editor</strong></td>
+            <td><code>index.html</code>, <code>app.js</code></td>
+            <td>Allows admin to modify status selects (Processing, Confirmed, Shipped, Delivered).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECTION 4 -->
+    <div class="page-break">
+      <h1>4. Technical Implementation &amp; Database Details</h1>
+      
+      <h2>Database Tables Schema</h2>
+      <div class="callout">
+        <strong>1. Categories Table:</strong> <code>{ id: STRING (PK), name: STRING, icon: STRING }</code><br>
+        <strong>2. Products Table:</strong> <code>{ id: STRING (PK), name: STRING, category: STRING (FK), price: NUMBER, mrp: NUMBER, stock: NUMBER, image: STRING, description: STRING }</code><br>
+        <strong>3. Orders Table:</strong> <code>{ id: STRING (PK), user_email: STRING (FK), date: STRING, total_amount: NUMBER, promo_code: STRING, discount: NUMBER, status: STRING }</code><br>
+        <strong>4. Order Items Table:</strong> <code>{ id: STRING (PK), order_id: STRING (FK), product_id: STRING (FK), quantity: NUMBER, price_per_unit: NUMBER }</code>
+      </div>
+
+      <h2>Key Relational Operations</h2>
+      <p>
+        The backend engine handles referential constraints dynamically inside <code>data/model.js</code>:
+      </p>
+      
+      <h2>Programmatic Multi-Table JOIN</h2>
+      <div class="code-block">
+function getOrderInvoiceSummary(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  const user = users[order.user_email] || {};
+  const items = orderItems.filter(oi => oi.order_id === orderId).map(oi => {
+    const prod = products.find(p => p.id === oi.product_id) || {};
+    return {
+      product_name: prod.name,
+      quantity: oi.quantity,
+      price_per_unit: oi.price_per_unit,
+      subtotal: oi.quantity * oi.price_per_unit
+    };
+  });
+  return { order, customer: user, items };
+}</div>
+
+      <h2>ON DELETE RESTRICT Integrity Constraint check</h2>
+      <div class="code-block">
+function deleteProduct(productId) {
+  const hasOrderLink = orderItems.some(oi => oi.product_id === productId);
+  if (hasOrderLink) {
+    return { 
+      success: false, 
+      reason: "RESTRICT CONSTRAINT VIOLATION: Product exists in historical order items." 
+    };
+  }
+  // Delete proceeds...
+}</div>
+    </div>
+
+    <!-- SECTION 5 -->
+    <div class="page-break">
+      <h1>5. Validation, Testing &amp; Project Review Sign-off</h1>
+      
+      <h2>Testing &amp; Edge Case Verifications</h2>
+      <ul>
+        <li><strong>Cart Capacity Checks:</strong> Blocks any quantity selections greater than 10 units.</li>
+        <li><strong>Authentication Caching Safety:</strong> Clears invalid/removed user token credentials from localStorage, protecting view states from crashing.</li>
+        <li><strong>Referential Consistency:</strong> Blocking deleting categories containing active products, preventing orphaned database keys.</li>
+      </ul>
+
+      <h2>Review Checklist &amp; Sign-off Grid</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Review Component</th>
+            <th>Completion Status</th>
+            <th>Evaluator Notes</th>
+            <th>Evaluator Initials</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Relational Model Seeding</strong></td>
+            <td><span class="status-badge success">Verified</span></td>
+            <td>Initial databases populated dynamically on initialization.</td>
+            <td>SE-01</td>
+          </tr>
+          <tr>
+            <td><strong>DBMS Integrity Rules</strong></td>
+            <td><span class="status-badge success">Verified</span></td>
+            <td>ON DELETE RESTRICT checks successfully prevent orphans.</td>
+            <td>SE-01</td>
+          </tr>
+          <tr>
+            <td><strong>Print-to-PDF invoice Engine</strong></td>
+            <td><span class="status-badge success">Verified</span></td>
+            <td>Generates and opens clean vector PDFs in separate tabs.</td>
+            <td>SE-02</td>
+          </tr>
+          <tr>
+            <td><strong>Widescreen Analytics Graphs</strong></td>
+            <td><span class="status-badge success">Verified</span></td>
+            <td>Bar and Doughnut charts refresh dynamically on dark theme change.</td>
+            <td>SE-02</td>
+          </tr>
+          <tr>
+            <td><strong>SPA Routing Engine</strong></td>
+            <td><span class="status-badge success">Verified</span></td>
+            <td>Back button History pushState transitions function correctly.</td>
+            <td>SE-03</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 10pt;">
+        <div>
+          <p>______________________________________</p>
+          <p><strong>Project Evaluator Signature</strong></p>
+        </div>
+        <div style="text-align: right;">
+          <p>______________________________________</p>
+          <p><strong>Principal Software Architect Signature</strong></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

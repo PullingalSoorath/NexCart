@@ -112,11 +112,11 @@ function setAllUsers(users) {
   localStorage.setItem(DB_USERS_KEY, JSON.stringify(users));
 }
 
-// ── Save / Update Current User to DB ────────────────────────
+// ── Save / Update Current User to DB & Cloud ────────────────
 function saveUserToDatabase() {
   const users = getAllUsers();
   if (Store.currentUser && Store.currentUser.email) {
-    users[Store.currentUser.email] = {
+    const userPayload = {
       ...users[Store.currentUser.email],
       name:      Store.currentUser.name,
       phone:     Store.currentUser.phone,
@@ -131,7 +131,12 @@ function saveUserToDatabase() {
       wishlist:  [...Store.wishlist],
       orders:    Store.orders
     };
+    users[Store.currentUser.email] = userPayload;
     setAllUsers(users);
+
+    if (typeof saveDocToFirestore === "function") {
+      saveDocToFirestore("users", Store.currentUser.email, userPayload);
+    }
   }
 }
 
@@ -181,7 +186,7 @@ function registerUser(email, password, name) {
   const users = getAllUsers();
   if (users[email]) return { success: false, reason: "exists" };
 
-  users[email] = {
+  const newUser = {
     password,
     name:           name || "NexCart User",
     phone:          "",
@@ -197,7 +202,19 @@ function registerUser(email, password, name) {
     orders:         [],
     profileComplete: false
   };
+  users[email] = newUser;
   setAllUsers(users);
+
+  if (typeof saveDocToFirestore === "function") {
+    saveDocToFirestore("users", email, newUser);
+  }
+
+  if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+    firebaseAuth.createUserWithEmailAndPassword(email, password).catch(err => {
+      console.warn("Firebase Auth Register Notice:", err.message);
+    });
+  }
+
   return { success: true };
 }
 

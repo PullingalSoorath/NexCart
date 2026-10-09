@@ -1683,6 +1683,7 @@ function placeOrderInRelationalDB(orderId, itemsToOrder, promoCode = "None", dis
   localStorage.setItem("nexcart_orders", JSON.stringify(orders));
 
   // 2. Insert into nexcart_order_items
+  const newOrderItemsList = [];
   itemsToOrder.forEach((item, index) => {
     const newOrderItem = {
       id: `oi-${orderId}-${index}`,
@@ -1694,9 +1695,15 @@ function placeOrderInRelationalDB(orderId, itemsToOrder, promoCode = "None", dis
       color: item.color || ""
     };
     orderItems.push(newOrderItem);
+    newOrderItemsList.push(newOrderItem);
   });
   localStorage.setItem("nexcart_order_items", JSON.stringify(orderItems));
   
+  // Sync Order and Order_Items to Firebase Firestore
+  if (typeof saveOrderToFirebase === "function") {
+    saveOrderToFirebase(newOrder, newOrderItemsList);
+  }
+
   // 3. Subtract product stock in nexcart_products (Inventory Adjustment!)
   const products = JSON.parse(localStorage.getItem("nexcart_products") || "[]");
   itemsToOrder.forEach(item => {
@@ -1706,6 +1713,9 @@ function placeOrderInRelationalDB(orderId, itemsToOrder, promoCode = "None", dis
         products[prodIdx].stock = 50; // default initial stock
       }
       products[prodIdx].stock = Math.max(products[prodIdx].stock - item.quantity, 0);
+      if (typeof saveDocToFirestore === "function") {
+        saveDocToFirestore("products", products[prodIdx].id, products[prodIdx]);
+      }
     }
   });
   localStorage.setItem("nexcart_products", JSON.stringify(products));
@@ -4096,6 +4106,9 @@ function renderAdminOrdersTable() {
       if (idx > -1) {
         ords[idx].status = nextStatus;
         localStorage.setItem("nexcart_orders", JSON.stringify(ords));
+        if (typeof saveDocToFirestore === "function") {
+          saveDocToFirestore("orders", oid, ords[idx]);
+        }
         showToast(`Order status updated to ${nextStatus}`, "success");
         renderAdminOrdersTable();
         renderAdminKPIs();
