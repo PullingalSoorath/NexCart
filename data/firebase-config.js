@@ -252,3 +252,76 @@ async function fetchCollectionFromFirestore(collectionName) {
     return null;
   }
 }
+
+// ── Google One-Click Authentication Handler ──────────────────
+async function loginWithGoogle() {
+  if (typeof firebase === "undefined" || !firebase.auth) {
+    if (typeof showToast === "function") showToast("Firebase Auth SDK not loaded.", "error");
+    return;
+  }
+
+  if (!firebaseAuth) {
+    try {
+      firebaseAuth = firebase.auth();
+    } catch (e) {
+      console.warn("Initializing auth on demand:", e.message);
+    }
+  }
+
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+
+    const result = await firebaseAuth.signInWithPopup(provider);
+    const user = result.user;
+
+    if (user && user.email) {
+      console.log("Google Auth Success:", user.email);
+      
+      const users = typeof getAllUsers === "function" ? getAllUsers() : {};
+      let userRecord = users[user.email];
+
+      if (!userRecord) {
+        userRecord = {
+          password: "",
+          name: user.displayName || "Google User",
+          email: user.email,
+          phone: user.phoneNumber || "+91 9090909090",
+          language: "English",
+          state: "Kerala",
+          city: "Trivandrum",
+          pincode: "695001",
+          address: "Default Delivery Address",
+          interests: ["Fashion", "Gadgets"],
+          savedAddresses: [],
+          cart: [],
+          wishlist: [],
+          orders: [],
+          profileComplete: true
+        };
+        users[user.email] = userRecord;
+        if (typeof setAllUsers === "function") setAllUsers(users);
+        if (typeof saveDocToFirestore === "function") {
+          saveDocToFirestore("users", user.email, userRecord);
+        }
+      }
+
+      if (typeof setActiveSession === "function") setActiveSession(user.email);
+      if (typeof loadActiveUserSession === "function") loadActiveUserSession();
+
+      if (typeof showToast === "function") {
+        showToast(`Welcome, ${user.displayName || 'User'}! Logged in with Google.`, "success");
+      }
+
+      if (typeof switchScreen === "function") {
+        switchScreen("screen-home");
+      }
+    }
+  } catch (err) {
+    console.warn("Google Sign-In Popup Note:", err.message);
+    if (err.code !== "auth/popup-closed-by-user") {
+      if (typeof showToast === "function") showToast(err.message || "Google Login failed", "error");
+    }
+  }
+}

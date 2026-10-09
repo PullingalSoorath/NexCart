@@ -432,6 +432,15 @@ function initAuth() {
     regForm.classList.add("active");
     loginForm.classList.remove("active");
   });
+
+  // Google One-Click Login Buttons
+  document.querySelectorAll(".btn-google-login").forEach(btn => {
+    btn.onclick = () => {
+      if (typeof loginWithGoogle === "function") {
+        loginWithGoogle();
+      }
+    };
+  });
   
   // Password Visibility Eye Buttons
   const loginPassInput = document.getElementById("login-password");
