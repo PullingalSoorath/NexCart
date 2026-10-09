@@ -224,6 +224,13 @@ function loginUser(email, password) {
   const users = getAllUsers();
   if (!users[email])                   return { success: false, reason: "not_found" };
   if (users[email].password !== password) return { success: false, reason: "wrong_password" };
+
+  if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+    firebaseAuth.signInWithEmailAndPassword(email, password).catch(err => {
+      console.warn("Firebase Auth Login Notice:", err.message);
+    });
+  }
+
   return { success: true, user: users[email], profileComplete: users[email].profileComplete };
 }
 
@@ -235,6 +242,11 @@ function setActiveSession(email) {
 // ── Clear Active Session (Logout) ───────────────────────────
 function clearActiveSession() {
   localStorage.removeItem(DB_ACTIVE_USER_KEY);
+  if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+    firebaseAuth.signOut().catch(err => {
+      console.warn("Firebase Auth SignOut Notice:", err.message);
+    });
+  }
 }
 
 // ── Mark Profile as Complete ─────────────────────────────────

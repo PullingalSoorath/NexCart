@@ -42,6 +42,9 @@ function initFirebase() {
 
       // Trigger automatic cloud seeding check
       seedFirebaseData();
+
+      // Listen to Auth State Changes
+      setupFirebaseAuthObserver();
     } catch (err) {
       console.warn("Firebase initialized with local fallback cache:", err.message);
       isFirebaseConnected = false;
@@ -50,6 +53,40 @@ function initFirebase() {
   } else if (!typeof firebase !== "undefined") {
     console.warn("Firebase SDK scripts not loaded. Operating in Local Cache mode.");
     updateFirebaseStatusUI(false);
+  }
+}
+
+// ── Firebase Auth Observer Setup ─────────────────────────────
+function setupFirebaseAuthObserver() {
+  if (!firebaseAuth || !isFirebaseConnected) return;
+  firebaseAuth.onAuthStateChanged(async (user) => {
+    if (user && user.email) {
+      console.log("Firebase Auth State: Logged in as", user.email);
+      const cloudUser = await fetchUserFromFirestore(user.email);
+      if (cloudUser && typeof Store !== "undefined") {
+        const users = typeof getAllUsers === "function" ? getAllUsers() : {};
+        users[user.email] = cloudUser;
+        if (typeof setAllUsers === "function") setAllUsers(users);
+        if (typeof setActiveSession === "function") setActiveSession(user.email);
+        if (typeof loadActiveUserSession === "function") loadActiveUserSession();
+        if (typeof updateBadges === "function") updateBadges();
+      }
+    }
+  });
+}
+
+// ── Fetch User Document from Firestore ───────────────────────
+async function fetchUserFromFirestore(email) {
+  if (!firestoreDb || !isFirebaseConnected || !email) return null;
+  try {
+    const doc = await firestoreDb.collection("users").doc(email).get();
+    if (doc.exists) {
+      return doc.data();
+    }
+    return null;
+  } catch (err) {
+    console.warn("Firestore fetch user error:", err.message);
+    return null;
   }
 }
 

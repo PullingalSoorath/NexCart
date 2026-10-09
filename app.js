@@ -1599,6 +1599,14 @@ function openProductDetails(productId) {
         const sum = prodReviews.reduce((s, r) => s + r.rating, 0);
         catalogProd.rating = parseFloat((sum / prodReviews.length).toFixed(1));
         catalogProd.reviews = prodReviews.length;
+        if (typeof saveDocToFirestore === "function") {
+          saveDocToFirestore("products", catalogProd.id, catalogProd);
+        }
+      }
+
+      if (typeof saveDocToFirestore === "function") {
+        const reviewDocId = `rev-${product.id}-${Date.now()}`;
+        saveDocToFirestore("reviews", reviewDocId, { product_id: product.id, ...newReview });
       }
       
       nameInput.value = "";
