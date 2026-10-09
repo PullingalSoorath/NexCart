@@ -1375,14 +1375,14 @@ function openProductDetails(productId) {
       stockBadge.innerHTML = `
         <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; color: #ef4444; font-weight: 800; font-size: 12px; background: rgba(239, 68, 68, 0.1); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.2); width: fit-content;">
           <i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i>
-          <span>Only ${stockVal} unit${stockVal === 1 ? '' : 's'} left with red color</span>
+          <span>Only ${stockVal} left</span>
         </div>
       `;
     } else if (stockVal > 5 && stockVal <= 10) {
       stockBadge.innerHTML = `
         <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; color: #f97316; font-weight: 800; font-size: 12px; background: rgba(249, 115, 22, 0.1); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(249, 115, 22, 0.2); width: fit-content;">
           <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
-          <span>Only ${stockVal} product left with orange color</span>
+          <span>Only ${stockVal} left</span>
         </div>
       `;
     } else if (stockVal === 0) {
