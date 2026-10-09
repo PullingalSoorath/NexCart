@@ -1366,6 +1366,37 @@ function openProductDetails(productId) {
   
   const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
   if (document.getElementById("pdp-discount-label")) document.getElementById("pdp-discount-label").textContent = `${discount}% OFF`;
+
+  // Render Low Stock Alert Badge below price
+  const stockBadge = document.getElementById("pdp-stock-badge-container");
+  if (stockBadge) {
+    const stockVal = product.stock !== undefined ? product.stock : 25;
+    if (stockVal > 0 && stockVal <= 5) {
+      stockBadge.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; color: #ef4444; font-weight: 800; font-size: 12px; background: rgba(239, 68, 68, 0.1); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.2); width: fit-content;">
+          <i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i>
+          <span>Only ${stockVal} unit${stockVal === 1 ? '' : 's'} left with red color</span>
+        </div>
+      `;
+    } else if (stockVal > 5 && stockVal <= 10) {
+      stockBadge.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; color: #f97316; font-weight: 800; font-size: 12px; background: rgba(249, 115, 22, 0.1); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(249, 115, 22, 0.2); width: fit-content;">
+          <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+          <span>Only ${stockVal} product left with orange color</span>
+        </div>
+      `;
+    } else if (stockVal === 0) {
+      stockBadge.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; color: #991b1b; font-weight: 800; font-size: 12px; background: rgba(153, 27, 27, 0.1); padding: 4px 10px; border-radius: var(--radius-sm); width: fit-content;">
+          <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+          <span>Out of Stock</span>
+        </div>
+      `;
+    } else {
+      stockBadge.innerHTML = "";
+    }
+  }
+
   if (document.getElementById("pdp-desc-text")) document.getElementById("pdp-desc-text").textContent = product.description;
 
   // Initialize carousel swiper & thumbs gallery
@@ -4021,7 +4052,8 @@ function renderAdminProductsTable() {
         document.getElementById("admin-prod-price").value = prod.price;
         document.getElementById("admin-prod-mrp").value = prod.mrp || prod.price;
         document.getElementById("admin-prod-stock").value = prod.stock !== undefined ? prod.stock : 50;
-        document.getElementById("admin-prod-image").value = prod.image;
+        const allImgs = (prod.images && prod.images.length > 0) ? prod.images.join('\n') : (prod.image || "");
+        document.getElementById("admin-prod-image").value = allImgs;
         document.getElementById("admin-prod-desc").value = prod.description || "";
 
         routeTo("screen-admin-product-form");
@@ -4241,7 +4273,7 @@ function initAdminDashboard() {
   // Product Form CRUD Submissions
   const prodForm = document.getElementById("form-admin-product");
   if (prodForm) {
-    prodForm.addEventListener("submit", (e) => {
+    prodForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const pid = document.getElementById("admin-prod-key").value.trim();
       const pName = document.getElementById("admin-prod-name").value.trim();
@@ -4249,8 +4281,31 @@ function initAdminDashboard() {
       const pPrice = parseInt(document.getElementById("admin-prod-price").value);
       const pMrp = parseInt(document.getElementById("admin-prod-mrp").value);
       const pStock = parseInt(document.getElementById("admin-prod-stock").value);
-      const pImg = document.getElementById("admin-prod-image").value.trim();
+      const pImgRaw = document.getElementById("admin-prod-image").value.trim();
       const pDesc = document.getElementById("admin-prod-desc").value.trim();
+      const fileInput = document.getElementById("admin-prod-file-input");
+
+      let imagesList = pImgRaw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+
+      // Read uploaded files if selected
+      if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        const filePromises = Array.from(fileInput.files).map(file => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+        });
+        const uploadedUrls = (await Promise.all(filePromises)).filter(Boolean);
+        imagesList = [...uploadedUrls, ...imagesList];
+      }
+
+      if (imagesList.length === 0) {
+        imagesList = ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80"];
+      }
+
+      const primaryImage = imagesList[0];
 
       const productObject = {
         id: pid,
@@ -4261,13 +4316,15 @@ function initAdminDashboard() {
         stock: pStock,
         rating: 4.5,
         reviews: 1,
-        image: pImg,
+        image: primaryImage,
+        images: imagesList,
         description: pDesc
       };
 
       const res = saveProduct(productObject);
       if (res.success) {
         showToast("Product saved successfully!", "success");
+        if (fileInput) fileInput.value = "";
         routeTo("screen-admin");
         renderAdminProductsTable();
         renderAdminKPIs();
